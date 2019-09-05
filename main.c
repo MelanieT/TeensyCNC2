@@ -28,12 +28,9 @@ extern volatile uint32_t Tick;
 extern volatile int32_t Target[2];
 extern volatile int32_t EncoderPos[2];
 
-// Simple max inline function
-#ifndef max
-inline float max(float a, float b) {
+float max(float a, float b) {
   return a > b ? a : b;
 }
-#endif
 
 // Simple USB CDC text printing
 #define INFO(x)    cdc_print("* " x "\r\n")
@@ -273,9 +270,6 @@ void dda_move (float feedRate) {
  *    huh? G    Unknown "Gnn" code
  *    huh? M    Unknown "Mnn" code
  *    * --      Info Response
- *
- *  Note: the g-code parser in TeensyCNC expects a space, or newline after each element of a command.  This means
- *  that TeensyCNC will not respond to "G00X1Y1\r\n".  Send as "G00 X1 Y1\r\n" instead.
  */
 
 void parseGcode (const char *line, int length) {
@@ -758,9 +752,11 @@ int main (void) {
       EnterBootLoader();
       break;
     case POWER_SHORT_PRESS:
+      // Todo: implement motor/encoder power on/off
       INFO("POWER_SHORT_PRESS");
       break;
     case POWER_LONG_PRESS:
+      // Todo: implement motor/encoder power on/off
       INFO("POWER_LONG_PRESS");
       break;
     }
