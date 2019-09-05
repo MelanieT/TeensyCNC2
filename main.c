@@ -1,7 +1,7 @@
 // TeensyCNC
 // Copyright 2016 Matt Williams
 //
-// g-code interpreter code is moostly based on RepRap and Marginally Clever's "How to make a Arduino CNC", though I've made a lot of changes.
+// g-code interpreter code is mostly based on RepRap and Marginally Clever's "How to make a Arduino CNC", though I've made a lot of changes.
 // USB CDC virtual serial is from Freescale's Processor Expert (I'm not crazy enough to write that from scratch!)
 // Everything else is taken from some of my other projects or from scratch.
 //
@@ -250,13 +250,13 @@ void dda_move (float feedRate) {
  *    M5  - Tool Up
  *    M7  - Tool Down
  *    M8  - Tool Up
- *    M30 - End of program with reset
+ *    M30 - End of program
  *    M39 - Load Paper
  *    M40 - Eject Paper
  *
  *  Special M Codes
  *    M112 - Emergency stop / Enter bootloader
- *    M115 - Prints Info
+ *    M115 - Prints Build Info
  *
  *  Supported Parameters
  *    Fn.n - Feed Rate
@@ -276,10 +276,6 @@ void dda_move (float feedRate) {
  *
  *  Note: the g-code parser in TeensyCNC expects a space, or newline after each element of a command.  This means
  *  that TeensyCNC will not respond to "G00X1Y1\r\n".  Send as "G00 X1 Y1\r\n" instead.
- */
-
-/*
- * Wayne's New G-Code Parser
  */
 
 void parseGcode (const char *line, int length) {
@@ -435,7 +431,7 @@ void parseGcode (const char *line, int length) {
                 HeadUp();
                 break;
               case 2:                                                   // End of program
-              case 30:                                                  // End of program with reset
+              case 30:                                                  // End of program
                 EndJob();
                 break;
               case 39:                                                  // Load the cutting mat
