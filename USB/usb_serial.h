@@ -26,24 +26,22 @@
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
+ *
+ * Wayne Holder, Sep 2019 - Removed unused code
  */
 
 #ifndef USBserial_h_
 #define USBserial_h_
 
-int usb_serial_getchar(void);
-int usb_serial_peekchar(void);
-int usb_serial_available(void);
-int usb_serial_read(void *buffer, uint32_t size);
-void usb_serial_flush_input(void);
-int usb_serial_putchar(uint8_t c);
-int usb_serial_write(const void *buffer, uint32_t size);
-int usb_serial_write_buffer_free(void);
-void usb_serial_flush_output(void);
 extern volatile uint8_t usb_cdc_transmit_flush_timer;
 extern volatile uint8_t usb_configuration;
 
-#define USB_SERIAL_DTR  0x01
-#define USB_SERIAL_RTS  0x02
+int usb_serial_getchar (void);
+
+int usb_serial_available (void);
+
+int usb_serial_write (const void *buffer, uint32_t size);
+
+void usb_serial_flush_output (void);
 
 #endif // USBserial_h_

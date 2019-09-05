@@ -8,1006 +8,781 @@
 // This all can be improved drastically, but it's a well working CNC example. G-code interpreter needs syntax checking, badly.
 
 // Sep 9, 2018 - Modifications made by Alun Jones (macros, pen up/down on Z, bootloader entry, job tracing, help, etc!)
+// Sep 5, 2019 - Extensive rewrite by Wayne Holder (reversed Y axis and added new button handler and g-code parser)
 
 #include "MK20D10.h"
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <math.h>
 #include <ctype.h>
+#include <stdbool.h>
 #include "pwm.h"
 #include "motor.h"
 #include "usb_dev.h"
 #include "usb_serial.h"
 
-struct {
-	char *macro;
-	char *replacement;
-	char *help;
-} macros[] = {
-	{ "load",       "M39",     "Load mat in two stages (slow then fast)" },
-	{ "unload",     "M40",     "Eject mat" },
-	{ "trace",      "M111 S1", "Trace job without cutting" },
-	{ "showbbox",   "M111 S3", "Trace bounding box of job" },
-	{ "printbbox",  "M111 S2", "Don't move head at all, but print bounding box after job" },
-	{ "cut",        "M111",    "Normal cutting mode" },
-	{ "bootloader", "M112",    "Enter bootloader" },
-	{ "help",       "M115",    "Show help" },
-	{ NULL, NULL, NULL }
-};
-
-// External system tick counter (driven by ARM systick interrupt)
+// External system tick counter (driven by ARM systick interrupt and counts in microseconds)
 extern volatile uint32_t Tick;
 
 // Axis' target steps (absolute) and encoder counts
 extern volatile int32_t Target[2];
 extern volatile int32_t EncoderPos[2];
 
-// Simple min/max macros
-#ifndef min
-#define min(a, b) ((a)<(b)?(a):(b))
-#endif
-
+// Simple max inline function
 #ifndef max
-#define max(a, b) ((a)>(b)?(a):(b))
+inline float max(float a, float b) {
+  return a > b ? a : b;
+}
 #endif
 
 // Simple USB CDC text printing
-#define INFO(x)		cdc_print("* " x "\r\n")
-#define RESULT(x)	cdc_print(x "\r\n")
+#define INFO(x)    cdc_print("* " x "\r\n")
+#define RESULT(x)  cdc_print(x "\r\n")
 
 // Cricut Mini steps per inch, this is triggering on both quadrature encoder edges, so it's actually 4X
 #define X_STEPS_PER_INCH (2868.6132f)
 #define Y_STEPS_PER_INCH (6876.0096f)
 
 // Max steps to the cut area limit on a 8.5 inch wide cutting mat
-#define X_MAT_STEPS 24150
+#define X_MAT_STEPS 24150           // 2,841.176 steps/inch
 
 // Arc section line length, the smaller the number, the finer the facet on arcs
 #define CURVE_SECTION_INCHES 0.005f
 
-// metric to imperial conversion constant
-#define MM_TO_INCHES (1.0f/25.4f)
-
 // Unit scaler, 1.0 is no scale (inches), 1/25.4 is metric working units
-float scale_to_inches=1.0f;   // Default to inches at start.
+float scale_to_inches = 1.0f;       // Default to inches at start.
 
 // Current, Target, and Delta axis units (working units, inches, MM, etc)
-float cu[3]={ 0.0f, 0.0f, 0.0f }; // Current
-float tu[2]={ 0.0f, 0.0f }; // Target
-float du[2]={ 0.0f, 0.0f }; // Delta
+float   posX = 0;                   // Current X Position
+float   posY = 0;                   // Current Y Position
+float   posZ = 0;                   // Current Z Position
+float   targetX = 0;                // Target X Position
+float   targetY = 0;                // Target Y Position
+float   deltaX = 0;                 // Delta X
+float   deltaY = 0;                 // Delta Y
+float   distance = 0;               // Delta Distance
 
-// Current, Target, and Delta axis steps (machine units, steps)
-int32_t cs[2]={ 0, 0 }; // Current
-int32_t ts[2]={ 0, 0 }; // Target
-int32_t ds[2]={ 0, 0 }; // Delta
+// Delta axis steps (machine units, steps)
+int32_t dxSteps = 0;                // Delta X steps
+int32_t dySteps = 0;                // Delta Y steps
 
-// Axis direction flags
-int8_t dir[2]={ 1, 1 };
+// Axis direction flags {Y, X}
+int8_t  dirX = 1;                   // X Axis step direction
+int8_t  dirY = -1;                  // Y Axis step direction
 
-// Feedrate, default is 90in/min
-float feedrate=90.0f;
+float   feedrate = 90.0f;           // Feedrate, default is 90 in/min
+bool    headDown = false;           // Head Solenoid state, true is down, else up
+bool    abs_mode = true;            // Motion mode, false = incremental; true = absolute
+bool    matLoaded = false;          // True if Cutting Mat is at loaded position, else false
 
-// Motion mode, 0 = incremental; 1 = absolute
-uint8_t abs_mode=1;
+#define MAX_COMMAND 128             // Max size of Incoming serial buffer
 
-// Level 1 => Don't drop cutting head.
-// Level 2 => Don't do actual moves.
-// Level 3 => Parse up to M2, then sweep bounding box with head up.
-// Anything else => Turn debugging off.
-enum _DL
-{
-	DEBUG_NONE=0,
-	DEBUG_NOCUT=1,
-	DEBUG_NOMOVE=2,
-	DEBUG_BBOX_ON_M2=3,
-	DEBUG_INVALID=4
-} DebugLevel=DEBUG_NONE;
+enum {
+    NO_CANCEL = 0,
+    BUTTON_CANCEL = 1,
+    SOFTSTOP_CANCEL = 2
+} cancelling = NO_CANCEL;
 
-// Incoming serial buffer stuff
-#define COMMAND_SIZE 128
-char buffer[COMMAND_SIZE];
-uint8_t serial_count=0, comment=0;
-uint32_t Incoming=0;
-uint8_t button_pressed=0;
-
-enum
-{
-	NO_CANCEL=0,
-	BUTTON_CANCEL=1,
-	SOFTSTOP_CANCEL=2
-} cancelling=NO_CANCEL;
-
-enum
-{
-	LOAD_UNLOADED=0,
-	LOAD_GRABBED=1,
-	LOAD_LOADED=2,
-} LoadState=LOAD_UNLOADED;
-
-void LoadYAxis(void);
-void EndJob(void);
-void PollButton(void);
+// Function prototypes for local functions
+void    LoadYAxis (void);
+void    EndJob (void);
+uint8_t getButton ();
 
 // Some helpful printing functions.
-void cdc_print(char *s)
-{
-	usb_serial_write(s, strlen(s));
-	usb_serial_flush_output();
+void cdc_print (char *s) {
+  usb_serial_write(s, strlen(s));
+  usb_serial_flush_output();
 }
 
-int8_t bboxstart=0, head_is_down=0;
-float bb[4]={ 0, 0, 0, 0};
-
 // Simple delay using ARM systick, set up for microseconds (see startup.c)
-void DelayUS(uint32_t us)
-{
-	uint32_t _time=Tick;
-
-	while((Tick-_time)<us);
+void DelayUS (uint32_t us) {
+  uint32_t _time = Tick;
+  while ((Tick - _time) < us);
 }
 
 // Same delay, only scaled 1000x for milliseconds
-void DelayMS(uint32_t ms)
-{
-	uint32_t _time=Tick;
-
-	while((Tick-_time)<(ms*1000))
-		PollButton();
+void DelayMS (uint32_t ms) {
+  uint32_t _time = Tick;
+  while ((Tick - _time) < (ms * 1000)) {
+    getButton();
+  }
 }
 
 // Resets CNC state to default
-void SetJobDefaults(void)
-{
-	feedrate=90.0f;
-	abs_mode=1;
-	scale_to_inches=1.0f;
-	DebugLevel=DEBUG_NONE;
+void SetJobDefaults (void) {
+  feedrate = 90.0f;
+  abs_mode = true;
+  scale_to_inches = 1.0f;
 }
 
 // Resets Teensy into boot loader mode (for uploading new code)
-void EnterBootLoader(void)
-{
-	MotorDisable();
-	INFO("Entering bootloader");
-
-	DelayMS(500);
-
-	__asm__ volatile("bkpt");
-
-	// NOT REACHED!
-	while (1);
+void EnterBootLoader (void) {
+  MotorDisable();
+  INFO("Entering bootloader");
+  DelayMS(500);
+  __asm__ volatile("bkpt");
+  // NOT REACHED!
+  while (1);
 }
 
-void HeadUp(void)
-{
-	// In all debug modes, keep the cutter raised.
-	head_is_down=0;
-
-	if (DebugLevel==DEBUG_NONE)
-	{
-		GPIOC->PCOR|=0x0020;
-		DelayMS(300); // Delay, limits pen/knife slap/skipping
-	}
+void HeadUp (void) {
+  if (headDown) {
+    GPIOC->PCOR |= 0x0020U;                     // D13 - Solenoid Off (head up)
+    DelayMS(300);                          // Delay, limits pen/knife slap/skipping
+    headDown = false;
+  }
 }
 
-void HeadDown(void)
-{
-	// In all debug modes, keep the cutter raised.
-	head_is_down=1;
-
-	if (DebugLevel==DEBUG_NONE)
-	{
-		GPIOC->PSOR|=0x0020;
-		DelayMS(300);  // Delay, limits pen/knife slap/skipping
-	}
-}
-
-void PollButton(void)
-{
-	static uint32_t last_transition=0;
-	static uint8_t oldstate=0;
-	static uint8_t flagged=0;
-	static uint8_t bootflagged=0;
-
-	uint8_t state=!(GPIOD->PDIR&0x0002);
-
-	if (state != oldstate)
-	{
-		last_transition=Tick;
-		flagged=0;
-	}
-
-	// If the button is pressed and we've not yet flagged it and 
-	// the state has been stable for 5ms then flag it.
-	if((state==1)&&!flagged&&(Tick-last_transition>5000))
-	{
-		button_pressed=1;
-		flagged=1;
-	}
-
-	if((state==1)&&!bootflagged&&(Tick-last_transition>1500000))
-	{
-		// If the button is held, enter the bootloader. This
-		// acts as an emergency stop on the motors and an emergency
-		// method of getting to the bootloader. Never returns...
-		bootflagged=1;
-		EnterBootLoader();
-	}
-
-	oldstate=state;
+void HeadDown (void) {
+  if (!headDown) {
+    GPIOC->PSOR |= 0x0020U;                     // D13 - Solenoid On (head down)
+    DelayMS(300);                          // Delay, limits pen/knife slap/skipping
+    headDown = true;
+  }
 }
 
 // Calculates axis deltas, used any time target units change
-void calculate_deltas(void)
-{
-	du[0]=fabs(tu[0]-cu[0]);
-	du[1]=fabs(tu[1]-cu[1]);
-
-	cs[0]=(cu[0]*X_STEPS_PER_INCH);
-	cs[1]=(cu[1]*Y_STEPS_PER_INCH);
-
-	ts[0]=(tu[0]*X_STEPS_PER_INCH);
-	ts[1]=(tu[1]*Y_STEPS_PER_INCH);
-
-	ds[0]=abs(ts[0]-cs[0]);
-	ds[1]=abs(ts[1]-cs[1]);
-
-	dir[0]=(ts[0]-cs[0])>0?1:-1;
-	dir[1]=(ts[1]-cs[1])>0?-1:1;
-}
-
-// Calculate the length of the line to move and how long it will take to get there
-// Taken from RepRap?
-uint32_t calculate_feedrate_delay(float feedrate)
-{
-	float distance=sqrt(du[0]*du[0]+du[1]*du[1]);
-	int32_t total=0;
-
-	if(ds[0]>ds[1])
-		total=ds[0];
-	else
-		total=ds[1];
-
-	return ((distance*60000000.0f)/feedrate)/total;	
+void calculate_deltas (void) {
+  deltaX = fabsf(targetX - posX);
+  deltaY = fabsf(targetY - posY);
+  distance = sqrtf(deltaX * deltaX + deltaY * deltaY);
+  int32_t csX = (posX * X_STEPS_PER_INCH);
+  int32_t csY = (posY * Y_STEPS_PER_INCH);
+  int32_t tsX = (targetX * X_STEPS_PER_INCH);
+  int32_t tsY = (targetY * Y_STEPS_PER_INCH);
+  dxSteps = abs(tsX - csX);
+  dySteps = abs(tsY - csY);
+  dirX = (tsX - csX) > 0 ? 1 : -1;    // X axis
+  dirY = (tsY - csY) > 0 ? 1 : -1;    // Y axis
 }
 
 // DDA line move code, optimized from "How to make a Arduino CNC", though it's pretty generic IMO
 
 // Number of steps to make the move
 int32_t dda_steps, dda_over;
+
 // Which axis is dominant
-uint8_t dda_daxis=0;
+bool  yOverX = false;
 
-void set_target(float x, float y)
-{
-	// Set the target units
-	tu[0]=x;
-	tu[1]=y;
-
-	// Recalculate deltas
-	calculate_deltas();
-
-	// Set up total steps from dominant axis and set a flag for which one
-	if(ds[0]>ds[1]) // X over Y
-	{
-		dda_daxis=0;
-		dda_steps=ds[0];
-		dda_over=ds[0]/2;
-	}
-	else // Y over X
-	{
-		dda_daxis=1;
-		dda_steps=ds[1];
-		dda_over=ds[1]/2;
-	}
+void set_target (float x, float y) {
+  // Set the target location
+  targetX = x;
+  targetY = y;
+  // Recalculate deltas
+  calculate_deltas();
+  // Set up total steps from dominant axis and set a flag for which one
+  if (dxSteps > dySteps) {
+    // X over Y
+    yOverX = false;
+    dda_steps = dxSteps;
+    dda_over = dxSteps / 2;
+  } else {
+    // Y over X
+    yOverX = true;
+    dda_steps = dySteps;
+    dda_over = dySteps / 2;
+  }
 }
 
 // Sets the position (home)
-void set_position(float x, float y)
-{
-	cu[0]=x;
-	cu[1]=y;
-
-	calculate_deltas();
+void set_position (float x, float y) {
+  posX = x;
+  posY = y;
+  calculate_deltas();
 }
 
 // Run the actual move, stripped bare, hopefully makes it faster
-void dda_move(uint32_t delay)
-{
-	if (DebugLevel==DEBUG_NOMOVE||DebugLevel==DEBUG_BBOX_ON_M2)
-	{
-		// In these debug modes, we don't drive the motors.
-		if (head_is_down)
-		{
-			// Keep track of the bounding box.
-			if (bboxstart||(tu[0]<bb[0]))
-				bb[0]=tu[0];
-
-			if (bboxstart||(tu[0]>bb[2]))
-				bb[2]=tu[0];
-
-			if (bboxstart||(tu[1]<bb[1]))
-				bb[1]=tu[1];
-
-			if (bboxstart||(tu[1]>bb[3]))
-				bb[3]=tu[1];
-
-			bboxstart=0;
-		}
-		dda_steps=0;
-	}
-	else
-	{
-		// Loop until we're out of steps, or it's interrupted by button press
-		while(!button_pressed&&dda_steps--)
-		{
-			Target[dda_daxis]+=dir[dda_daxis];
-			dda_over+=ds[!dda_daxis];
-
-			if(dda_over>=ds[dda_daxis])
-			{
-				dda_over-=ds[dda_daxis];
-				Target[!dda_daxis]+=dir[!dda_daxis];
-			}
-
-			// Enforce soft limits since there's no safe hard stop.
-			if ((Target[0]<0)||(Target[0]>X_MAT_STEPS))
-			{
-				cancelling=SOFTSTOP_CANCEL;
-				break;
-			}
-
-			DelayUS(delay);
-			PollButton();
-		}
-	}
-
-	// Arrived at target
-	cu[0]=tu[0];
-	cu[1]=tu[1];
-
-	// Recalculate deltas
-	calculate_deltas();
+void dda_move (float feedRate) {
+  // Calculate the length of the line to move and how long it will take to get there
+  int32_t total = dxSteps > dySteps ? dxSteps : dySteps;
+  uint32_t delay = ((distance * 60000000.0f) / feedRate) / total;
+  // Loop until we're out of steps, or it's interrupted by button press
+  while ((cancelling == NO_CANCEL) && dda_steps--) {
+    if (yOverX) {
+      Target[1] += dirY;
+      dda_over += dxSteps;
+    } else {
+      Target[0] += dirX;
+      dda_over += dySteps;
+    }
+    if (dda_over >= (yOverX ? dySteps : dxSteps)) {
+      if (yOverX) {
+        Target[0] += dirX;
+        dda_over -= dySteps;
+      } else {
+        Target[1] += dirY;
+        dda_over -= dxSteps;
+      }
+    }
+    // Enforce soft limits since there's no safe hard stop.
+    if ((Target[0] < 0) || (Target[0] > X_MAT_STEPS)) {
+      cancelling = SOFTSTOP_CANCEL;
+      break;
+    }
+    DelayUS(delay);
+  }
+  // Arrived at target
+  posX = targetX;
+  posY = targetY;
+  // Recalculate deltas
+  calculate_deltas();
 }
 
-// Pull the number that follows the letter 'code'
-float search_string(char code)
-{
-	char *ptr=buffer;
+/**
+ *  G Codes Implemented by TeensyCNC:
+ *    G00 - Rapid positioning
+ *    G01 - Linear Interpolation
+ *    G02 - Circular interpolation, clockwise
+ *    G03 - Circular interpolation, counterclockwise
+ *    G04 - Set Dwell (in seconds)
+ *    G20 - Set Units to Inches
+ *    G21 - Set Units to Millimeters
+ *    G28 - Go home
+ *    G30 - Go home in two steps
+ *    G90 - Set Absolute Mode (default)
+ *    G91 - Set Incremental Mode
+ *    G92 - Set current position as home
+ *
+ *  M Codes Implemented by TeensyCNC:
+ *    M2  - End of program
+ *    M3  - Tool Down
+ *    M4  - Tool Down
+ *    M5  - Tool Up
+ *    M7  - Tool Down
+ *    M8  - Tool Up
+ *    M30 - End of program with reset
+ *    M39 - Load Paper
+ *    M40 - Eject Paper
+ *
+ *  Special M Codes
+ *    M112 - Emergency stop / Enter bootloader
+ *    M115 - Prints Info
+ *
+ *  Supported Parameters
+ *    Fn.n - Feed Rate
+ *    Pn.n - Pause in seconds (used by G4 command)
+ *    Xn.n - X Coord
+ *    Yn.n - Y Coord
+ *    Zn.n - Z Coord
+ *    In.n - I Coord (arc center X for arc segments)
+ *    Jn.n - J Coord (arc center Y for arc segments)
+ *
+ *  Responses (terminated by "\r\n")
+ *    ok        Normal response
+ *    cancelled Job cancelled
+ *    huh? G    Unknown "Gnn" code
+ *    huh? M    Unknown "Mnn" code
+ *    * --      Info Response
+ *
+ *  Note: the g-code parser in TeensyCNC expects a space, or newline after each element of a command.  This means
+ *  that TeensyCNC will not respond to "G00X1Y1\r\n".  Send as "G00 X1 Y1\r\n" instead.
+ */
 
-	while(ptr&&*ptr&&ptr<buffer+serial_count)
-	{
-		if(*ptr==code)
-			return atof(ptr+1);
+/*
+ * Wayne's New G-Code Parser
+ */
 
-		ptr=strchr(ptr, ' ')+1;
-	}
-
-	return 0.0f;
+void parseGcode (const char *line, int length) {
+  float xVal = posX;
+  float yVal = posY;
+  float zVal = posZ;
+  float iVal = 0;
+  float jVal = 0;
+  float pause = 1.0f;                         // Default pause time of 1 second
+  int gVal = -1;
+  char type = 0;
+  // Process gcode line by line
+  int state = 0;
+  int ii = 0;
+  while (ii < length) {
+    switch (state) {
+      case 0:                               // Waiting for Code
+        switch (line[ii]) {
+          case 'G':                         // Motion
+          case 'F':                         // Feed Rate
+          case 'M':                         // Misc. function
+          case 'X':                         // Horizontal position (head left/right)
+          case 'Y':                         // Vertical position (max in/out)
+          case 'Z':                         // Tool Height
+          case 'I':
+          case 'J':
+          case 'P':                         // Pause time (for G04 dwell command)
+            type = line[ii];
+            state = 1;                      // Parse parameter
+            break;
+          case '(':                         // Begin comment
+            state = 2;
+            break;
+          case ';':                         // Skip rest of line as comment
+            ii = length + 1;
+            break;
+        }
+        ii++;
+        break;
+      case 1: {
+        // Parse command parameter
+        int intVal = 0;
+        float decDivisor = 1;
+        bool hasDecimal = false;
+        bool isNegative = false;
+        // Skip leading space, if any
+        while (line[ii] == ' ' || line[ii] == '\t') {
+          ii++;
+        }
+        // Check if number is prefixed by sign
+        if (line[ii] == '-') {
+          isNegative = true;
+          ii++;
+        } else if (line[ii] == '+') {
+          ii++;
+        }
+        // Process digits and decimal point
+        while (ii < length && ((line[ii] >= '0' && line[ii] <= '9') || line[ii] == '.')) {
+          if (hasDecimal) {
+            decDivisor *= 10;
+          }
+          if (line[ii] == '.') {
+            hasDecimal = true;
+            ii++;
+          } else {
+            intVal = (intVal * 10) + (line[ii++] - '0');
+          }
+        }
+        if (isNegative) {
+          intVal = -intVal;
+        }
+        switch (type) {
+          case 'X':                                                     // X Axis Position
+            if (abs_mode) {
+              xVal = ((float) intVal / decDivisor) / scale_to_inches;
+            } else {
+              xVal += ((float) intVal / decDivisor) / scale_to_inches;
+            }
+            break;
+          case 'Y':                                                     // Y axis Position
+            if (abs_mode) {
+              yVal = ((float) intVal / decDivisor) / scale_to_inches;
+            } else {
+              yVal += ((float) intVal / decDivisor) / scale_to_inches;
+            }
+            break;
+          case 'Z':                                                     // Z Axis Position
+            if (abs_mode) {
+              zVal = ((float) intVal / decDivisor) / scale_to_inches;
+            } else {
+              zVal += ((float) intVal / decDivisor) / scale_to_inches;
+            }
+            if (zVal < 0) {
+              HeadDown();
+            } else {
+              HeadUp();
+            }
+            break;
+          case 'I':
+            iVal = ((float) intVal / decDivisor) / scale_to_inches;
+            break;
+          case 'J':
+            jVal = ((float) intVal / decDivisor) / scale_to_inches;
+            break;
+          case 'G':
+            switch (intVal) {
+              case 0:                                                   // Rapid positioning
+              case 1:                                                   // Linear Interpolation
+              case 2:                                                   // Clockwise arc segment
+              case 3:                                                   // Counterclockwise arc segment
+              case 4:                                                   // Set Dwell (in seconds)
+                gVal = intVal;
+                break;
+              case 20:                                                  // Set Units to Inches
+                scale_to_inches = 1.0f;
+                break;
+              case 21:                                                  // Set Units to Millimeters
+                scale_to_inches = 25.4f;
+                break;
+              case 28:                                                  // Go home
+                set_target(0.0f, 0.0f);
+                dda_move(100.0f);
+                DelayMS(100);
+                // Zero out encoder and step positions
+                EncoderPos[0] = 0;
+                EncoderPos[1] = 0;
+                Target[0] = 0;
+                Target[1] = 0;
+                break;
+              case 90:                                                  // Set Absolute Mode (default)
+                abs_mode = true;
+                break;
+              case 91:                                                  // Set Incremental Mode
+                abs_mode = false;
+                break;
+              case 92:                                                  // Set current position as home
+                set_position(0.0f, 0.0f);
+                break;
+              default:                                                  // Unknown command
+                RESULT("huh? G");
+                break;
+            }
+            break;
+          case 'M':                                                     // Misc. function
+            switch (intVal) {
+              case 3:                                                   // Tool Down / spindle on clockwise
+              case 4:                                                   // Tool Down / spindle on counterclockwise
+              case 7:                                                   // Tool Down / mist coolant on
+                HeadDown();
+                break;
+              case 5:                                                   // Tool Up / spindle stop
+              case 8:                                                   // Tool Up / flood coolant on
+                HeadUp();
+                break;
+              case 2:                                                   // End of program
+              case 30:                                                  // End of program with reset
+                EndJob();
+                break;
+              case 39:                                                  // Load the cutting mat
+                INFO("loading mat");
+                matLoaded = false;
+                LoadYAxis();
+                break;
+              case 40:                                                  // Eject the cutting mat
+                INFO("unloading mat");
+                matLoaded = true;
+                LoadYAxis();
+                break;
+              case 112:
+                EnterBootLoader();                                      // Emergency stop / Enter bootloader
+                break;
+              case 115:                                                 // Help
+                INFO("-- TeensyCNC Rev 2 " __DATE__ " " __TIME__ " --"
+                     "|Created by:| - Matt Williams|with additions by:| - Alun Jones (2018)| - Wayne Holder (2019)");
+                break;
+              default:                                                  // Unknown command
+                RESULT("huh? M");
+                break;
+            }
+            break;
+          case 'F':                                                     // Feed Rate
+            feedrate = (float) intVal / decDivisor;
+            break;
+          case 'P':
+            pause = (float) intVal / decDivisor;
+            break;
+          case 'T':                                                     // Tool Select
+            break;
+        }
+        state = 0;
+      } break;
+      case 2:                                                           // Process () comment
+        while (ii < length && line[ii] != ')') {
+          ii++;
+        }
+        if (line[ii] == ')') {
+          ii++;
+        }
+        state = 0;
+        break;
+    }
+  }
+  // Get here when line processed
+  switch (gVal) {
+    case 0:                               // Move To new Location with Head Up at fast feed rate
+      HeadUp();
+      set_target(xVal, yVal);
+      dda_move(250);
+      break;
+    case 1:                               // Line To new Location with Head Down at defined feed rate
+      HeadDown();
+      set_target(xVal, yVal);
+      dda_move(feedrate);
+      break;
+    case 2:                               // Clockwise Arc Segment
+    case 3: {                             // Counterclockwise Arc Segment
+      // Get arc X/Y center (I/J)
+      float cX = iVal + posX;
+      float cY = jVal + posY;
+      // Calculate the cross product
+      float aX = (posX - cX);
+      float aY = (posY - cY);
+      float bX = (xVal - cX);
+      float bY = (yVal - cY);
+      float start_angle, end_angle;
+      // CW or CCW
+      if (gVal == 2) {
+        // Find the starting and ending angle between the two points
+        start_angle = atan2f(bY, bX);
+        end_angle = atan2f(aY, aX);
+      } else {
+        start_angle = atan2f(aY, aX);
+        end_angle = atan2f(bY, bX);
+      }
+      // Ensure we're still in range for radians
+      if (end_angle <= start_angle) {
+        end_angle += 2.0f * 3.1415926f;
+      }
+      // Calculate the total angle and radius of the arc
+      float angle = end_angle - start_angle;
+      float radius = sqrtf(aX * aX + aY * aY);
+      // Calculate the number of steps, CURVE_SECTION_INCHES = lenth of line segment that forms the circle
+      int steps = (int) ceilf(max(angle * 2.4f, (radius * angle) / CURVE_SECTION_INCHES));
+      // Run it out
+      for (int s = 1; s <= steps; s++) {
+        float sf = (float) ((gVal == 3) ? s : steps - s) / (float) steps; // Step fraction, invert 's' for CCW arcs
+        float theta = start_angle + angle * sf;
+        set_target(cX + cosf(theta) * radius, cY + sinf(theta) * radius);
+        dda_move(feedrate);
+      }
+    } break;
+    case 4:                               // Dwell for P seconds
+      DelayMS((int) (pause * 1000.0f));
+      break;
+  }
+  switch (cancelling) {
+    case NO_CANCEL:
+      RESULT("ok");
+      break;
+    case SOFTSTOP_CANCEL:
+      INFO("Head went out of bounds!");
+      RESULT("cancelled");
+      EndJob();
+      break;
+    case BUTTON_CANCEL:
+      RESULT("cancelled");
+      break;
+    default:
+      INFO("illegal 'cancelling' state");
+      break;
+  }
 }
 
-// Checks if the 'key' code is in the buffer
-uint8_t has_command(char key)
-{
-	int i;
-
-	for(i=0;i<serial_count;i++)
-	{
-		if(buffer[i]==key)
-			return 1;
-	}
-
-	return 0;
+// Simple hard-stop axis homing function.  It's a bit of a hack, but works.
+void HomeXAxis (void) {
+  int32_t prevcount = 0, prevtime = 0;
+  // Make sure the head is up.
+  HeadUp();
+  // Disable motor drive PID loop
+  MotorDisable();
+  // Store current X encoder position
+  prevcount = EncoderPos[0];
+  // Store current tick
+  prevtime = Tick;
+  // Drive the X motor home with enough torque to move it at a good pace, but not so much that it can't be stopped by the hard-stop.
+  MotorCtrlX(-40000);
+  // Let it move for a few ticks to generate some delta
+  DelayMS(10);
+  while (1) {
+    // Velocity of motion over 1mS (1000uS)
+    if ((Tick - prevtime) > 1000) {
+      // Calculate the delta position from the last mS
+      int32_t dC = abs(EncoderPos[0] - prevcount);
+      // If the velocity drops below 1 step/mS, we've hit the hard-stop and drop out of the loop
+      if (dC < 1) {
+        break;
+      }
+      // Otherwise, update the previous position/time and continue on
+      prevcount = EncoderPos[0];
+      prevtime = Tick;
+    }
+  }
+  // Stop the motor and let it settle
+  MotorCtrlX(0);
+  DelayMS(100);
+  // Zero out encoder and step positions
+  EncoderPos[0] = 0;
+  EncoderPos[1] = 0;
+  Target[0] = 0;
+  Target[1] = 0;
+  // Zero out the CNC position
+  set_position(0.0f, 0.0f);
+  // Let it settle again and reenable the PID loop
+  DelayMS(100);
+  MotorEnable();
+  // We're home!
 }
 
-// Process the current command
-void process_string(void)
-{
-	int code; // Current command code
-	float t[3]={ 0.0f, 0.0f, 0.0f }; // Temp coord
-
-	float c[2]={ 0.0f, 0.0f }; // Arc center coord
-	int steps, s; // Temps for arc calculation
-	float start_angle, end_angle, angle, radius, a[2], b[2];
-
-	// Blank line?
-	if (buffer[0] == 0)
-	{
-		RESULT("ok");
-		return;
-	}
-
-	// Macro replacement.
-	for (int i=0; macros[i].macro != NULL; i++)
-	{
-		if (strcmp(buffer, macros[i].macro) == 0)
-		{
-			strcpy(buffer, macros[i].replacement);
-			serial_count = strlen(buffer);
-			break;
-		}
-	}
-
-	if(has_command('G')||has_command('X')||has_command('Y')||has_command('Z')||has_command('F'))
-	{
-		code=(int)search_string('G');
-
-		switch(code)
-		{
-			case 0:
-			case 1:
-			case 2:
-			case 3:
-			case 30:
-				// Prefetch X, Y, Z and Feedrate
-
-				if(abs_mode) // Get specified X/Y/Z coords from command, absolute mode
-				{
-					if(has_command('X'))
-						t[0]=search_string('X') * scale_to_inches;
-					else
-						t[0]=cu[0];
-
-					if(has_command('Y'))
-						t[1]=search_string('Y') * scale_to_inches;
-					else
-						t[1]=cu[1];
-
-					if(has_command('Z'))
-						t[2]=search_string('Z') * scale_to_inches;
-					else
-						t[2]=cu[2];
-				}
-				else // Incremental mode
-				{
-					t[0]=search_string('X') * scale_to_inches + cu[0];
-					t[1]=search_string('Y') * scale_to_inches + cu[1];
-					t[2]=search_string('Z') * scale_to_inches + cu[2];
-				}
-
-				// Have we moved down or up? Zero is the threshold: 
-				// below zero is "cutter down".
-				if ((t[2] >= 0) && (cu[2] < 0))
-					HeadUp();
-				else if ((t[2] < 0) && (cu[2] >= 0))
-					HeadDown();
-
-				cu[2] = t[2];
-
-				if(has_command('F'))
-					feedrate=search_string('F') * scale_to_inches; // Search for feedrate OP
-				break;
-		}
-
-		switch(code)
-		{
-			// Rapid or linear feed
-			case 0:
-			case 1:
-				// Set target position
-				set_target(t[0], t[1]);
-
-				// Go there, if code = 0 then set rapid feedrate
-				dda_move(calculate_feedrate_delay(code?feedrate:250));
-				break;
-
-			// CW/CCW arc
-			case 2:
-			case 3:
-				// Get arc X/Y center (I/J)
-				c[0]=search_string('I') * scale_to_inches + cu[0];
-				c[1]=search_string('J') * scale_to_inches + cu[1];
-
-				// Calculate the cross product
-				a[0]=(cu[0]-c[0]);
-				a[1]=(cu[1]-c[1]);
-				b[0]=(t[0]-c[0]);
-				b[1]=(t[1]-c[1]);
-
-				// CW or CCW
-				if(code==2)
-				{
-					// Find the starting and ending angle between the two points
-					start_angle=atan2(b[1], b[0]);
-					end_angle=atan2(a[1], a[0]);
-				}
-				else
-				{
-					start_angle=atan2(a[1], a[0]);
-					end_angle=atan2(b[1], b[0]);
-				}
-
-				// Ensure we're still in range for radians
-				if(end_angle<=start_angle)
-					end_angle+=2.0f*3.1415926f;
-
-				// Calculate the total angle and radius of the arc
-				angle=end_angle-start_angle;
-				radius=sqrt(a[0]*a[0]+a[1]*a[1]);
-
-				// Calculate the number of steps, CURVE_SECTION_INCHES = lenth of line segment that forms the circle
-				steps=(int)ceil(max(angle*2.4f, (radius*angle)/CURVE_SECTION_INCHES));
-
-				// Run it out
-				for(s=1;s<=steps;s++)
-				{
-					float sf=(float)((code==3)?s:steps-s)/steps; // Step fraction, invert 's' for CCW arcs
-					float theta=start_angle+angle*sf;
-
-					set_target(c[0]+cos(theta)*radius, c[1]+sin(theta)*radius);
-					dda_move(calculate_feedrate_delay(feedrate));
-				}
-				break;
-
-			// Dwell in seconds
-			case 4:
-				if (DebugLevel == DEBUG_NONE)
-					DelayMS((int)(search_string('P')*1000.0f));
-				break;
-
-			// Set inches units
-			case 20:
-				scale_to_inches = 1;
-				break;
-
-			// Set MM units
-			case 21:
-				scale_to_inches = MM_TO_INCHES;
-				break;
-
-			// Go home
-			case 28:
-				set_target(0.0f, 0.0f);
-				dda_move(calculate_feedrate_delay(100.0f));
-				break;
-
-			// Go home in two steps
-			case 30:
-				set_target(t[0], t[1]);
-				dda_move(calculate_feedrate_delay(100.0f));
-				set_target(0.0f, 0.0f);
-				dda_move(calculate_feedrate_delay(100.0f));
-				break;
-
-			// Set absolute mode
-			case 90:
-				abs_mode=1;
-				break;
-
-			// Set incremental mode
-			case 91:
-				abs_mode=0;
-				break;
-
-			// Set current position as home
-			case 92:
-				set_position(0.0f, 0.0f);
-				break;
-
-			// Error
-			default:
-				RESULT("huh? G");
-				break;
-		}
-
-		// Done
-		switch (cancelling)
-		{
-			case NO_CANCEL:
-				RESULT("ok");
-				break;
-
-			case SOFTSTOP_CANCEL:
-				INFO("Head went out of bounds!");
-				RESULT("cancelled");
-				EndJob();
-				break;
-
-			case BUTTON_CANCEL:
-				RESULT("cancelled");
-				break;
-		}
-
-		return;
-	}
-
-	if(has_command('M'))
-	{
-		code=search_string('M');
-
-		switch(code)
-		{
-			// Program end
-			case 2:		// End of program
-			case 30:	// End of program with reset
-				EndJob();
-				break;
-
-			// Head down
-			case 3:	// Spindle on (CCW)
-			case 4:	// Spindle on (CW)
-			case 7:	// Mist coolant on (seems to be common for plasma/oxyfuel "torch on")
-				HeadDown();
-				break;
-
-			// Head up
-			case 5:	// Spindle stop
-			case 8:	// Flood coolant on (seems to be common for plasma/oxyfuel "torch off")
-				HeadUp();
-				break;
-
-			// Load the paper
-			case 39:
-				LoadState=LOAD_UNLOADED;
-				LoadYAxis();
-				DelayMS(2000);
-				LoadYAxis();
-				break;
-
-			// Eject the paper.
-			case 40:
-				LoadState=LOAD_LOADED;
-				LoadYAxis();
-				break;
-
-			// Debug. 
-			case 111:
-				if(has_command('S'))
-				{
-					DebugLevel=search_string('S');
-
-					if (DebugLevel>=DEBUG_INVALID)
-						DebugLevel=DEBUG_NONE;
-				}
-				else
-					DebugLevel=DEBUG_NONE;
-
-				switch(DebugLevel)
-				{
-					case DEBUG_NONE:
-						INFO("Job mode: CUT");
-						break;
-
-					case DEBUG_NOCUT:
-						INFO("Job mode: TRACE (no cut)");
-						break;
-
-					case DEBUG_NOMOVE:
-						INFO("Job mode: PARSE (no moves, print bounds after M2 command)");
-						break;
-
-					case DEBUG_BBOX_ON_M2:
-						INFO("Job mode: BBOX (show bounds after M2 command)");
-						break;
-
-					default:
-						break;
-				}
-
-				if (DebugLevel != DEBUG_NONE)
-				{
-					HeadUp();
-					bboxstart=1;
-				}
-
-				if ((DebugLevel == DEBUG_NOMOVE) || (DebugLevel == DEBUG_BBOX_ON_M2))
-				{
-					enum _DL old=DebugLevel;
-					DebugLevel=DEBUG_NONE;
-					set_target(0.0f, 0.0f);
-					dda_move(calculate_feedrate_delay(100.0f));
-					DebugLevel=old;
-				}
-				break;
-
-			// Emergency stop / Enter bootloader
-			case 112:
-				EnterBootLoader();
-				break;
-
-			// Help
-			case 115:
-				INFO("-- TeensyCNC " __DATE__ " " __TIME__ " --");
-				INFO("Available macros:");
-				INFO("");
-				for (int i=0; macros[i].macro != NULL; i++)
-				{
-					char buffer[90];
-					snprintf(buffer, sizeof(buffer), "*   %-10s - %s\r\n",
-					macros[i].macro, macros[i].help);
-					cdc_print(buffer);
-				}
-				INFO("");
-				INFO("N.B. macros are lower case to avoid clashing with gcode");
-				break;
-
-			// Error
-			default:
-				RESULT("huh? M");
-				break;
-		}		
-
-		// Done
-		RESULT("ok");
-
-		return;
-	}
-
-	// Error, didn't find anything
-	RESULT("huh?");
+void LoadYAxis (void) {
+  HomeXAxis();
+  if (matLoaded) {
+    // Run out enough to fully eject the cutting mat
+    INFO("Unloading");
+    set_position(0.0f, 0.0f);
+    set_target(0.0f, -14.0f);
+    dda_move(250.0f);
+    set_position(0.0f, 0.0f);
+    matLoaded = false;
+  } else {
+    // Load enough to put tool upper/left position
+    INFO("Loading");
+    set_position(0.0f, 0.0f);
+    set_target(0.0f, 1.75f);
+    dda_move(50.0f);
+    set_position(0.0f, 0.0f);
+    matLoaded = true;
+  }
+  INFO("Done");
 }
 
-// Simple hard-stop axis homing function.
-// It's a bit of a hack, but works.
-void HomeXAxis(void)
-{
-	int32_t prevcount=0, prevtime=0;
-
-	// Make sure the head is up.
-	HeadUp();
-
-	// Disable motor drive PID loop
-	MotorDisable();
-
-	// Store current X encoder position
-	prevcount=EncoderPos[0];
-	// Store current tick
-	prevtime=Tick;
-
-	// Drive the X motor home with enough torque to move it at a good pace, but not so much that it can't be stopped by the hard-stop.
-	MotorCtrlX(-40000);
-
-	// Let it move for a few ticks to generate some delta
-	DelayMS(10);
-
-	while(1)
-	{
-		// Velocity of motion over 1mS (1000uS)
-		if((Tick-prevtime)>1000)
-		{
-			// Calculate the delta position from the last mS
-			int32_t dC=abs(EncoderPos[0]-prevcount);
-
-			// If the velocity drops below 1 step/mS, we've hit the hard-stop and drop out of the loop
-			if(dC<1)
-				break;
-
-			// Otherwise, update the previous position/time and continue on
-			prevcount=EncoderPos[0];
-			prevtime=Tick;
-		}
-	}
-
-	// Stop the motor and let it settle
-	MotorCtrlX(0);
-	DelayMS(100);
-
-	// Zero out encoder and step positions
-	EncoderPos[0]=0;
-	EncoderPos[1]=0;
-	Target[0]=0;
-	Target[1]=0;
-
-	// Zero out the CNC position
-	set_position(0.0f, 0.0f);
-
-	// Let it settle again and reenable the PID loop
-	DelayMS(100);
-	MotorEnable();
-
-	// We're home!
+void EndJob (void) {
+  HeadUp();
+  // Return home at end of job, hopefully future will allow home position to be retained after load/unloads
+  set_target(0.0f, 0.0f);
+  dda_move(100.0f);
+  DelayMS(100);
+  // Zero out encoder and step positions
+  EncoderPos[0] = 0;
+  EncoderPos[1] = 0;
+  Target[0] = 0;
+  Target[1] = 0;
 }
 
-void LoadYAxis(void)
-{
-	HomeXAxis();
+#define LOAD_SHORT_PRESS    1
+#define LOAD_LONG_PRESS     2
+#define POWER_SHORT_PRESS   3
+#define POWER_LONG_PRESS    4
 
-	switch (LoadState)
-	{
-		// Just load it in a little bit to allow alignment.
-		case LOAD_UNLOADED:
-			INFO("Short loading");
-			set_position(0.0f, 0.0f);
-			set_target(0.0f, -1.0f);
-			dda_move(calculate_feedrate_delay(50.0f));
-			set_position(0.0f, 0.0f);
-			LoadState=LOAD_GRABBED;
-			break;
-
-		// Align it with the bottom left of the paper.
-		case LOAD_GRABBED:
-			INFO("Full loading");
-			set_position(0.0f, 0.0f);
-			set_target(0.0f, -12.875f);
-			dda_move(calculate_feedrate_delay(250.0f));
-			set_position(0.0f, 0.0f);
-			LoadState=LOAD_LOADED;
-			break;
-
-		// Load it out, run out enough to eject it no matter where.
-		case LOAD_LOADED:
-			INFO("Unloading");
-			set_position(0.0f, 0.0f);
-			set_target(0.0f, 14.0f);
-			dda_move(calculate_feedrate_delay(250.0f));
-			set_position(0.0f, 0.0f);
-			LoadState=LOAD_UNLOADED;
-			break;
-
-		default:
-			LoadState=LOAD_UNLOADED;
-			break;
-	}
-
-	INFO("Done");
+uint8_t getButton () {
+  static uint32_t lastCheck = 0;
+  static uint8_t  loadState = 0;
+  static uint16_t loadLong = 0;
+  static uint8_t  powerState = 0;
+  static uint16_t powerLong = 0;
+  if ((Tick - lastCheck) > 10 * 1000) {
+    // Check buttons every 10 ms
+    bool load = !(GPIOD->PDIR & 0x0002U);       // Teensy D14 - Load Button
+    switch (loadState) {
+      case 0:                                   // Waiting for Load Button press
+        if (load) {
+          loadState++;                          // Load Pressed
+        }
+        loadLong = 0;
+        break;
+      case 1:                                   // Wait for release, or long press
+        if (!load) {
+          loadState = 0;
+          return LOAD_SHORT_PRESS;
+        } else if (loadLong++ > 100) {          // If held for > 1 second, then long press
+          loadState++;                          // Load Long Press
+          return LOAD_LONG_PRESS;
+        }
+        break;
+      case 2:                                   // Wait for release
+        if (!load) {
+          loadState = 0;
+        }
+        break;
+    }
+    bool power = !(GPIOD->PDIR & 0x0080U);      // Teensy D5 - Power Button
+    switch (powerState) {
+      case 0:                                   // Waiting for Power Button press
+        if (power) {
+          powerState++;                         // Power Pressed
+        }
+        powerLong = 0;
+        break;
+      case 1:                                   // Wait for release, or long press
+        if (!power) {
+          powerState = 0;
+          return POWER_SHORT_PRESS;
+        } else if (powerLong++ > 100) {         // If held for > 1 second, then long press
+          powerState++;                         // Power Long Press
+          return POWER_LONG_PRESS;
+        }
+        break;
+      case 2:                                   // Wait for release
+        if (!power) {
+          powerState = 0;
+        }
+        break;
+    }
+    lastCheck = Tick;
+  }
+  return 0;
 }
 
-void EndJob(void)
-{
-	enum _DL olddebug=DebugLevel;
-	DebugLevel=DEBUG_NONE;
+int main (void) {
+  uint32_t lastactive = 0;
+  char    lineBuf[MAX_COMMAND];
+  uint8_t charCount = 0;
+  // Head up/down Solenoid uses Teensy D13 (PTC5 output, also Teensy's onboard LED)
+  PORTC->PCR[5] = PORT_PCR_MUX(1);         // Set PORTC_PCR5 MUX Field to GPIO
+  GPIOC->PDDR |= 0x0020U;                     // Teensy D13 - Solenoid (set as output)
+  GPIOC->PCOR |= 0x0020U;                     // Teensy D13 - Solenoid Off
 
-	HeadUp();
+  // Enable control of D1 Grn Power LED/\, Encoders and Motors using Teensy D8 (PTD3 output, PIC14 Pin 7)
+  PORTD->PCR[3] = PORT_PCR_MUX(1);         // Set PORTD_PCR3 MUX Field to GPIOR
+  GPIOD->PDDR |= 0x0008U;                     // Teensy D8 - Grn Power LED D3 (set as output)
+  GPIOD->PSOR |= 0x0008U;                     // Teensy D8 - Grn Power LED D3 (Must be On to enable Encoders & Motors)
 
-	if(cancelling==NO_CANCEL)
-	{
-		if(olddebug==DEBUG_BBOX_ON_M2)
-		{
-			cu[0]=cu[1]=0.0f;
+  // Enable control of D2 Red Power LED using Teensy D7 (PTD2 output, PIC14 Pin 6)
+  PORTD->PCR[2] = PORT_PCR_MUX(1);         // Set PORTD_PCR2 MUX Field to GPIO
+  GPIOD->PDDR |= 0x0004U;                     // Teensy D7 - Red Power LED D2 (set as output)
+  GPIOD->PCOR |= 0x0004U;                     // Teensy D7 - Red Power LED D2 (Off)
 
-			set_target(bb[0], bb[1]);
-			dda_move(calculate_feedrate_delay(250.0f));
-			DelayMS(1000);
-			set_target(bb[2], bb[1]);
-			dda_move(calculate_feedrate_delay(100.0f));
-			set_target(bb[2], bb[3]);
-			dda_move(calculate_feedrate_delay(100.0f));
-			set_target(bb[0], bb[3]);
-			dda_move(calculate_feedrate_delay(100.0f));
-			set_target(bb[0], bb[1]);
-			dda_move(calculate_feedrate_delay(100.0f));
-			DelayMS(1000);
+  // Enable control of D3 Grn Load LED using Teensy D6 (PTD4 output, PIC14 Pin 5)
+  PORTD->PCR[4] = PORT_PCR_MUX(1);         // Set PORTD_PCR4 MUX Field to GPIO
+  GPIOD->PDDR |= 0x0010U;                     // Teensy D6 - Grn Load LED D1 (set as output)
+  GPIOD->PCOR |= 0x0010U;                     // Teensy D6 - Grn Load LED D1 (Off)
 
-			set_target(0.0f, 0.0f);
-			dda_move(calculate_feedrate_delay(250.0f));
-		}
+  // Enable Power Button as Input using Teensy D5 (PTD7 input, PIC28 Pin 10)
+  PORTD->PCR[7] = PORT_PCR_MUX(1);         // Set PORTD_PCR7 MUX Field to GPIO
+  GPIOD->PDDR &= ~0x0080U;                    // Teensy D5 - Power Button (set as input)
 
-		if (olddebug!=DEBUG_NONE)
-		{
-			// Floating point snprintf hangs, so let's work with integers.
-			// For mm measurements, that's fine. Less so for inches!
-			char buffer[90];
-			snprintf(buffer, sizeof(buffer), "* Bounding box was %d,%d %d,%d %s\r\n",
-				(int)(bb[0]/scale_to_inches+0.5f), 
-				(int)(bb[1]/scale_to_inches+0.5f),
-				(int)(bb[2]/scale_to_inches+0.5f), 
-				(int)(bb[3]/scale_to_inches+0.5f), 
-				(scale_to_inches==1?"inches":"mm"));
-			cdc_print(buffer);
-		}
-	}
+  // Enable Load Button as Input using Teensy D14 (PTD1 input, PIC14 Pin 14)
+  PORTD->PCR[1] = PORT_PCR_MUX(1);         // Set PORTD_PCR1 MUX Field to GPIO
+  GPIOD->PDDR &= ~0x0002U;                    // Teensy D14 - Load Button (set as input)
 
-/*	Alun Jones (full reset)
-	SetJobDefaults();
-	HomeXAxis(); */
-
-	// Return home at end of job, hopefully future will allow home position to be retained after load/unloads (for easier repeat jobs)
-	set_target(0.0f, 0.0f);
-	dda_move(calculate_feedrate_delay(100.0f));
-}
-
-int main(void)
-{
-	uint32_t lastactive = 0;
-
-	// Head up/down solenoid
-	// Teensy pin 13 (PTC5 output, also Teensy's onboard LED)
-	PORTC->PCR[5]=PORT_PCR_MUX(1);
-	GPIOC->PDDR|=0x0020;
-	GPIOC->PCOR|=0x0020;
-
-	// Load button
-	// Teensy pin 14 (PTD1 input)
-	PORTD->PCR[1]=((PORTD->PCR[1]&~(PORT_PCR_ISF_MASK|PORT_PCR_MUX(0x06)))|(PORT_PCR_MUX(0x01)));
-	GPIOD->PDDR&=~0x0002;
-
-	// Initialize X/Y motor PWM channels, set 0 duty (FFFFh = 0%, 0 = 100%)
-	PWM_Init();
-	PWM_SetRatio(0x00, 0xFFFF);
-	PWM_SetRatio(0x01, 0xFFFF);
-	PWM_SetRatio(0x05, 0xFFFF);
-	PWM_SetRatio(0x06, 0xFFFF);
-
-	// Initialize motor PID control and encoder interrupts
-	Motor_Init();
-
-	// Initialize USB CDC virtual serial device
-	usb_init();
-
-	// Home the X axis
-	HomeXAxis();
-
-	// Setup defaults
-	SetJobDefaults();
-
-	while(1)
-	{
-		uint32_t idle=(Tick-lastactive)>250000;
-
-		if (idle&&(cancelling!=NO_CANCEL))
-			cancelling=NO_CANCEL;
-
-		PollButton();
-
-		if(button_pressed)
-		{
-			INFO("Button was pressed");
-			button_pressed=0;
-
-			if (idle)
-				LoadYAxis();
-			else
-			{
-				INFO("Cancelling");
-				cancelling=BUTTON_CANCEL;
-				EndJob();
-				RESULT("cancelled");
-				lastactive=Tick;
-			}
-		}
-
-		Incoming=usb_serial_available();
-
-		if(Incoming>0)
-		{
-			while(Incoming--)
-			{
-				uint8_t tmp=usb_serial_getchar();
-
-				// Handle comments
-				if ((tmp == '(') || (tmp == '%') || (tmp == ';'))
-					comment=1;
-
-				if(!comment)
-					buffer[serial_count++]=(char)tmp;
-				else if ((tmp == '\r') || (tmp == '\n'))
-				{
-					buffer[serial_count++]=(char)tmp;
-					comment=0;
-				}
-				else if (tmp == ')')
-					comment=0;
-			}
-			if (cancelling!=NO_CANCEL)
-			{
-				RESULT("cancelled");
-
-				for(int i=0;i<COMMAND_SIZE;i++)
-					buffer[i]=0;
-
-				serial_count=0;
-			}
-
-			lastactive=Tick;
-		}
-
-		// CR/LF ends lines and starts command processing
-		if((cancelling==NO_CANCEL)&&((buffer[serial_count-1]=='\n')||(buffer[serial_count-1]=='\r')))
-		{
-			buffer[serial_count]=0;
-
-			while((serial_count>0)&&(isspace((int)buffer[serial_count-1])))
-				buffer[--serial_count]=0;
-
-			process_string();
-
-			// After processing, clear the buffer
-			for(int i=0;i<COMMAND_SIZE;i++)
-				buffer[i]=0;
-
-			serial_count=0;
-			lastactive=Tick;
-		}
-	}
+  // Initialize X/Y motor PWM channels, set 0 duty (FFFFh = 0%, 0 = 100%)
+  PWM_Init();
+  PWM_SetRatio(0x00, 0xFFFF);
+  PWM_SetRatio(0x01, 0xFFFF);
+  PWM_SetRatio(0x05, 0xFFFF);
+  PWM_SetRatio(0x06, 0xFFFF);
+  Motor_Init();                               // Initialize motor PID control and encoder interrupts
+  usb_init();                                 // Initialize USB CDC virtual serial device
+  HomeXAxis();                                // Home the X axis
+  SetJobDefaults();                           // Setup defaults
+  // Read and process incoming gcode
+  while (true) {
+    bool idle = (Tick - lastactive) > 250000;
+    if (idle && (cancelling != NO_CANCEL)) {
+      cancelling = NO_CANCEL;
+    }
+    switch (getButton()) {
+    case LOAD_SHORT_PRESS:
+      INFO("Load Button was pressed");
+      if (idle) {
+        LoadYAxis();
+      } else {
+        INFO("Cancelling");
+        cancelling = BUTTON_CANCEL;
+        EndJob();
+        RESULT("cancelled");
+        lastactive = Tick;
+      }
+      break;
+    case LOAD_LONG_PRESS:
+      EnterBootLoader();
+      break;
+    case POWER_SHORT_PRESS:
+      INFO("POWER_SHORT_PRESS");
+      break;
+    case POWER_LONG_PRESS:
+      INFO("POWER_LONG_PRESS");
+      break;
+    }
+    uint32_t incoming = usb_serial_available();
+    while (incoming-- > 0) {
+      char cc = (char) usb_serial_getchar();
+      if (cancelling == NO_CANCEL) {
+        if (cc == '\n') {
+          if (charCount > 0) {
+            parseGcode(lineBuf, charCount);
+          }
+          charCount = 0;
+        } else if (cc >= ' ' && charCount < sizeof(lineBuf) - 1) {
+          lineBuf[charCount++] = (char) toupper(cc);
+          lineBuf[charCount] = 0;
+        }
+      }
+      lastactive = Tick;
+    }
+  }
 }

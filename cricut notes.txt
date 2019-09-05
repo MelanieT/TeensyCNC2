@@ -1,42 +1,127 @@
 PIC24FJ64GB002
 Master PIC:
-
-		1	28
-		2	27
-		3	26	motorYb
-		4	25	motorXb
-		5	24	motorXa
-motorYa		6	23
-	 	7	22
-		8	21
-		9	20
-power button	10	19
-head solenoid	11	18
-loadd button	12	17
-		13	16
-		14	15
+    		        1	28
+    		        2	27
+    		        3	26 - Motor YB
+    		        4	25 - Motor XB
+    		        5	24 - Motor XA
+         Motor YA - 6	23
+    	 	        7	22
+    		        8	21
+    		        9	20
+    Power button - 10	19
+   Head Solenoid - 11	18
+     Load Button - 12	17
+           	       13	16
+    		       14	15
 
 PIC16LF1823
 Slave PIC:
-
-				1	14	
-encoder Xb			2	13	
-encoder Xa			3	12	
-				4	11	encoder Yb
-				5	10	
-				6	9	
-LED enable (encoder power)	7	8	encoder Ya
+    				1	14
+       Encoder Xb - 2	13
+       Encoder Xa - 3	12
+    				4	11 - Encoder Yb
+    	   D1 LED - 5	10
+    	   D2 LED - 6	 9
+  D1 LED/encoders - 7	 8 - Encoder Ya
 
 Motor connection:
-(left to right)
-1 - motor -
-2 - motor +
-3 - sensor com
-4 - A
-5 - LED +
-6 - B
+    (left to right)
+    1 - Motor -
+    2 - Motor +
+    3 - Sensor common
+    4 - A
+    5 - LED +
+    6 - B
+
+Cricut Mini Power Supply
+
+    18V DC, 1.8Amps - Center Positive, 5.5 mm OD, 2.5 mm ID Barrel Jack
+
+    U700 is 10V Regulator (powers LEDs)
+    U703 is a 3.3V Regulator
 
 Cricut Mini hacking:
 
 One PIC MCU (master), handles USB interface, command queing/excution, motion control.
 The other PIC (slave) runs a set of interrupts, counting quadratic motor encoder pulses, passes the data to master PIC via SPI.
+
+Wayne's Notes
+
+ *  USB VID: 0x2504
+ *  USB PID: 0x0300
+ *
+ *  Teensy HalfKay VID: 0x16C0
+ *  Teensy HalfKay PID: 0x0478
+ *
+ *  Teeensy 3.2 VID: 0x16C0
+ *  Teeensy 3.2 PID: 0x0483  JSSC Port Id is "/dev/cu.usbmodem4201"
+ *
+ *  I/O Pins on 28 Pin PIC (PIC24FJ64GB002)
+ *   PIC                  Teensy 3.2
+ *    6 - Motor YA          D23
+ *    8 - Ground            Gnd
+ *   11 - Head Solenoid     D13
+ *   10 - Power Button      D5
+ *   12 - Load Button       D14
+ *   21 - USB+              USB+
+ *   22 - USB-              USB-
+ *   24 - Motor XA          D21
+ *   25 - Motor XB          D20
+ *   26 - Motor YB          D22
+ *
+ *  I/O Pins on 14 Pin PIC (PIC16LF1823)
+ *   PIC                  Teensy 3.2
+ *    2 - Encoder XB        D12
+ *    3 - Encoder XA        D11
+ *    5 - Power LED D1      D8
+ *    6 - Power LED D2      D7
+ *    7 - Load LED D3       D6
+ *    8 - Encoder YB        D16
+ *   11 - Encoder YA        D17
+ *
+ *  Teensy 3.2 Pin Port to Pin Mapping
+ *  Teensy  Port    Pin     Function
+ *     D0 - PTB16, Pin 39 - Unused
+ *     D1 - PTB17, Pin 40 - Unused
+ *     D2 - PTD0,  Pin 57 - Unused
+ *     D3 - PTA12, Pin 28 - Unused
+ *     D4 - PTA13, Pin 29 - Unused
+ *  *  D5 - PTD7,  Pin 64 - Power Button
+ *  *  D6 - PTD4,  Pin 61 - Load LED D3 (pull high to turn On)
+ *  *  D7 - PTD2,  Pin 59 - Power LED D2 (pull high to turn On)
+ *  *  D8 - PTD3,  Pin 60 - Power LED D1/Encoders (pull high to turn On)
+ *     D9 - PTC3,  Pin 46 - Unused
+ *    D10 - PTC4,  Pin 49 - Unused
+ *    D11 - PTC6,  Pin 51 - Encoder XA
+ *    D12 - PTC7,  Pin 52 - Encoder XB
+ *    D13 - PTC5,  Pin 50 - Head Solenoid (Teensy LED)
+ * A0/D14 - PTD1,  Pin 58 - Load Button
+ * A1/D15 - PTC0,  Pin 43 - Unused
+ * A2/D16 - PTB0,  Pin 35 - Encoder YB
+ * A3/D17 - PTB1,  Pin 36 - Encoder YA
+ * A4/D18 - PTB3,  Pin 38 - Unused
+ * A5/D19 - PTB2,  Pin 37 - Unused
+ * A6/D20 - PTD5,  Pin 62 - Motor XB
+ * A7/D21 - PTD6,  Pin 63 - Motor XA
+ * A8/D22 - PTC1,  Pin 44 - Motor YB
+ * A9/D23 - PTC2,  Pin 45 - Motor YA
+ *    D24 - PTA5,  Pin 27 - Unused
+ *    D25 - PTB19, Pin 42 - Unused
+ *    D26 - PTE1,  Pin 02 - Unused
+ *    D27 - PTC9,  Pin 54 - Unused
+ *    D28 - PTC8,  Pin 53 - Unused
+ *    D29 - PTC10, Pin 55 - Unused
+ *    D30 - PTC11, Pin 56 - Unused
+ *    D31 - PTE0,  Pin 01 - Unused
+ *    D32 - PTB18, Pin 41 - Unused
+ *    D33 - PTA4,  Pin 26 - Unused
+ *
+ *  Power/Feed Panel PCB Connections
+ *      1 - Power Button (shorts to common)
+ *      2 - Switch Common (connected to ground)
+ *      3 - Load Button (shorts to common)
+ *      4 - LED D1 (Power)
+ *      5 - LED D2 (Power)
+ *      6 - LED Common (Anode)
+ *      7 - LED D3 (Feed)
