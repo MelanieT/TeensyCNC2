@@ -45,8 +45,8 @@ tool worth investing in.  However, if you use it carefully, a less expensive, wi
 The process involves the following steps:
 
  1. Use the Philips screwdriver to open the Cricut Mini's case to get access to its printed circuit control board (PCB). [Click here](markdown/disassembly.md) to see a visual guide on how to disasmble the Cricut Mini. 
- 2. Unplug the cables connecting the PCB to the front control panel and the various motors and mechanisms.
- 3. Unsolder and remove the 14 pin and 28 pin "PIC" microprocesors from the PCB.  [Click here](images/removethese.jpg) to see where these are located on the PCB.
+ 2. Unsolder and remove the 14 pin and 28 pin "PIC" microprocesors from the PCB.  [Click here](images/removethese.jpg) to see where these are located on the PCB.  Alternatively, you could use small diagonal cutters to carefully clip each pin of the IC package to remove the IC and then use the soldering iron to remove the leftover pins.  However, be careful not to damage or nick the delicate traces on the PCB.
+ 3. Use solder wick to clean up the pads and remove the old solder, then use the Sn63/Pb37 solder to tin each of the pads indicated with arrows [in this photo](images/solderpads.jpg). At the same time, carefully  unsolder resistor R7 shown in the same photo and tin the pad on the left of the PCB.
  
 
 ### more coming soon
