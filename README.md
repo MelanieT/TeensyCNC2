@@ -13,7 +13,11 @@ However, Matt's ingenious "hack" completely bypasses all of Provo Craft's sneaky
 their products by replacing the two PIC microcontollers inside the Cricut Mini with an inexpensive, Arm-based microcontroller board, the
 [Teensy 3.2](https://www.pjrc.com/store/teensy32.html).  I came across Matt's work while I was working on my 
 [LaserCut](https://github.com/wholder/LaserCut) program, which is Java-based program designed to allow users to create 2D vector
-designs and then send them to laser, paper or vinyl cutters.
+designs and then send them to laser, paper or vinyl cutters.  While Matt's original code worked fine, I decided to rework it on order to make a few changes and improvements, such as:
+ 
+  - Rewriting the G-Code parser using a state machine to make it easier to extend and revise
+  - Reversing the Y axis so that the origin of the cutting mat is the upper left rather than the lower left
+  - Rework the button press code and add wiring to allow use of the Power button and lEDs on the control panel
 
 ## Fight Back against Forced Obsolence!
 
@@ -21,12 +25,12 @@ If you are reasonably skilled with using a screwdriver and a soldering iron, you
 and turn an otherwise useless device back into something fun and useful.  But, first, you'll need to obtain the following required materials and tools,
 or their equivalent:
    - Temperature-controlled soldering iron
-   - Medium small Philips screwdriver
+   - Medium size Philips screwdriver
    - [Teensy 3.2 Board without presoldered pins](https://www.pjrc.com/store/teensy32.html) (Note 1)
    - [Rosin Core, Sn63/Pb37 solder](https://www.amazon.com/Solder-Diameter-Storage-Welding-Soldering/dp/B01N0VNNKO/ref=sr_1_5)
    - [Copper solder wick](https://www.amazon.com/NTE-Electronics-SW02-10-No-Clean-Blue-098/dp/B0195UVWJ8/ref=sr_1_1_sspa?th=1)
    - [30 gauge, tin plated, Kynar™ insulated "wire wrap" wire](https://www.amazon.com/gp/product/B006C4ARR4/ref=ppx_yo_dt_b_asin_title_o00_s00) (Note 2)
-   - Precision 30 gauge wire strippers, such as the [Jonard ST-500](https://www.amazon.com/Jonard-ST-500-Adjustable-Precision-Thickness/dp/B001ICLVN4/ref=sr_1_1) (Note 3)
+   - Precision, 30 gauge wire strippers, such as the [Jonard ST-500](https://www.amazon.com/Jonard-ST-500-Adjustable-Precision-Thickness/dp/B001ICLVN4/ref=sr_1_1) (Note 3)
    
 Note 1: The discontinued [Teensy 3.1](https://www.pjrc.com/teensy/teensy31.html) can also be used, as it is pin compatible with the Teensy 3.2.
 
