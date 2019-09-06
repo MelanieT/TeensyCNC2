@@ -12,9 +12,8 @@ leaving current owners, such as Matt's wife, unable to use it.  Prior to this, P
 However, Matt's ingenious "hack" completely bypasses all of Provo Craft's sneaky attempts to control how users can use
 their products by replacing the two PIC microcontollers inside the Cricut Mini with an inexpensive, Arm-based microcontroller board, the
 [Teensy 3.2](https://www.pjrc.com/store/teensy32.html).  I came across Matt's work while I was working on my 
-[LaserCut](https://github.com/wholder/LaserCut) program, which is Java-based program that's designed allow users to create 2D vector
-designs and then send them to laser, paper or vinyl cutters in the form of [G-code](https://en.wikipedia.org/wiki/G-code), which is a
-widely used way to send designs to a variety of CNC machines.
+[LaserCut](https://github.com/wholder/LaserCut) program, which is Java-based program designed to allow users to create 2D vector
+designs and then send them to laser, paper or vinyl cutters.
 
 ## Fight Back against Forced Obsolence!
 
