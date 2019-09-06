@@ -27,10 +27,11 @@ or their equivalent:
    - Temperature-controlled soldering iron
    - Medium size Philips screwdriver
    - [Teensy 3.2 Board without presoldered pins](https://www.pjrc.com/store/teensy32.html) (Note 1)
-   - [Rosin Core, Sn63/Pb37 solder](https://www.amazon.com/Solder-Diameter-Storage-Welding-Soldering/dp/B01N0VNNKO/ref=sr_1_5)
-   - [Copper solder wick](https://www.amazon.com/NTE-Electronics-SW02-10-No-Clean-Blue-098/dp/B0195UVWJ8/ref=sr_1_1_sspa?th=1)
-   - [30 gauge, tin plated, Kynar™ insulated "wire wrap" wire](https://www.amazon.com/gp/product/B006C4ARR4/ref=ppx_yo_dt_b_asin_title_o00_s00) (Note 2)
-   - Precision, 30 gauge wire strippers, such as the [Jonard ST-500](https://www.amazon.com/Jonard-ST-500-Adjustable-Precision-Thickness/dp/B001ICLVN4/ref=sr_1_1) (Note 3)
+   - [Rosin Core, Sn63/Pb37 solder](https://www.amazon.com/Solder-Diameter-Storage-Welding-Soldering/dp/B01N0VNNKO/)
+   - [Copper solder wick](https://www.amazon.com/NTE-Electronics-SW02-10-No-Clean-Blue-098/dp/B0195UVWJ8/)
+   - [30 gauge, tin plated, Kynar™ insulated "wire wrap" wire](https://www.amazon.com/gp/product/B006C4ARR4/) (Note 2)
+   - Precision, 30 gauge wire strippers, such as the [Jonard ST-500](https://www.amazon.com/Jonard-ST-500-Adjustable-Precision-Thickness/dp/B001ICLVN4/) (Note 3)
+   - [Double-sided, 1 inch foam tape](https://www.amazon.com/gp/product/B00347A8GC/)
    
 Note 1: The discontinued [Teensy 3.1](https://www.pjrc.com/teensy/teensy31.html) can also be used, as it is pin compatible with the Teensy 3.2.
 
@@ -47,6 +48,9 @@ The process involves the following steps:
  1. Use the Philips screwdriver to open the Cricut Mini's case to get access to its printed circuit control board (PCB). [Click here](markdown/disassembly.md) to see a visual guide on how to disasmble the Cricut Mini. 
  2. Unsolder and remove the 14 pin and 28 pin "PIC" microprocesors from the PCB.  [Click here](images/removethese.jpg) to see where these are located on the PCB.  Alternatively, you could use small diagonal cutters to carefully clip each pin of the IC package to remove the IC and then use the soldering iron to remove the leftover pins.  However, be careful not to damage or nick the delicate traces on the PCB.
  3. Use solder wick to clean up the pads and remove the old solder, then use the Sn63/Pb37 solder to tin each of the pads indicated with arrows [in this photo](images/solderpads.jpg). At the same time, carefully  unsolder resistor R7 shown in the same photo and tin the pad on the left of the PCB.
+ 4. Download the file [main.hex](https://github.com/wholder/TeensyCNC2/blob/master/main.hex) and use it to [program the Teensy](https://www.pjrc.com/teensy/first_use.html).  Depending on which operating system you use, you'll first need to download the [Teensy Loader](https://www.pjrc.com/teensy/loader.html).
+ 5. Attach the Teensy to the MIni's PCB using some double-sided foam tape, [as shown in this photo](images/foamtape.jpg).
+ 6. 
  
 
 ### more coming soon
