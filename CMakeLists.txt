@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.14)
-project(GCodeParser C)
+project(TeensyCNC2 C)
 
 set(CMAKE_C_STANDARD 99)
 
 include_directories(USB)
 
-add_executable(GCodeParser
+add_executable(TeensyCNC2
         main.c
         cmsis_gcc.h
         core_cm4.h
@@ -14,6 +14,7 @@ add_executable(GCodeParser
         core_cmSimd.h
         MK20D10.h
         MK20D10_features.h
+        MK20D10_flash.ld
         motor.c
         motor.h
         pwm.c
