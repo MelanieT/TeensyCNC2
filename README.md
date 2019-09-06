@@ -1,4 +1,4 @@
-<p align="center"><a href="https://github.com/wholder/TeensyCNC2/blob/master/images/TeensyMod.jpg"><img src="https://github.com/wholder/TeensyCNC2/blob/master/images/TeensyMod.jpg" width="50%" height=50%"></a></p>
+<p align="center"><a href="https://github.com/wholder/TeensyCNC2/blob/master/images/TeensyMod.jpg"><img src="https://github.com/wholder/TeensyCNC2/blob/master/images/TeensyMod.jpg" width="75%" height=75%"></a></p>
 
 ## TeensyCNC2
 
