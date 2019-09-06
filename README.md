@@ -16,7 +16,7 @@ their products by replacing the two PIC microcontollers inside the Cricut Mini w
 designs and then send them to laser, paper or vinyl cutters in the form of [G-code](https://en.wikipedia.org/wiki/G-code), which is a
 widely used way to send designs to a variety of CNC machines.
 
-## Fight Back against Planned Obsolence!
+## Fight Back against Forced Obsolence!
 
 If you are reasonably skilled with using a screwdriver and a soldering iron, you should be able to easily modify a Cricut Mini in a few hours
 and turn an otherwise useless device back into something fun and useful.  But, first, you'll need to obtain the following required materials and tools,
