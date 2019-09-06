@@ -1,74 +1,48 @@
-TeensyCNC, CNC controller using a Teensy 3.x!
+## TeensyCNC2
 
-Currently only 2 axis, but easily expanded.
-Made to hack my Wife's Cricut Mini, because Provo Craft sucks and wants you to pay them to be creative (and now that they've discontinued it and basically bricked it!)
-I want to cut/draw what I want, not something that's in THEIR clipart library AND have to pay for it as well!!!
+TeensyCNC2 is an updated version of [TeensyCNC](https://github.com/seishuku/TeensyCNC), which is a program created by Matt Williams that
+runs on a Teensy 3.2 board that's been retrofitted into a modified Cricut™ Mini in order to make it useful again.  In an amazing display
+of corporate tone deafness, Provo Craft, the original makers of the Cricut™ Mini decided in 2018  to make it obsolete by shutting down
+the "[Craft Room](http://inspiration.cricut.com/cricut-craft-room-closing/)" on-line service needed to make the Cricut™ Mini function and
+leaving current owners, such as Matt's wife, unable to use it.  Prior to this, Provo Craft had also sued and shut down at two makers of
+3rd party software that could work with their products and use a form of encrypted communication to discourage anyone from trying to
+create software that can commnicate with their products.
 
-Besides that, it's also a fun project! :D
+What's ingenious about Matt's "hack" is that it completely bypasses all of Provo Craft's sneaky attempts to control how users can use
+their products by replacing the two PIC microcontollers inside the Cricut Mini with an inexpensive, Arm-based microcontroller board, the
+[Teensy 3.2](https://www.pjrc.com/store/teensy32.html).  I came across Matt's work while I was working on my 
+[LaserCut](https://github.com/wholder/LaserCut) program, which is Java-based program that's designed allow users to create 2D vector
+designs and then send them to laser, paper or vinyl cutters in the form of [G-code](https://en.wikipedia.org/wiki/G-code), which is a
+widely used way to send designs to a variety of CNC machines.
 
-Connection information:
+## Fight Back against Planned Obsolence!
 
-<b>Original PIC24FJ64GB002 (Master PIC - handles USB interface, command queing/excution, motion control):</b>
+If you are reasonably skilled with using a screwdriver and a soldering iron, you should be able easily modify a Cricut Mini in a few hours
+and turn an otherwise useless device back into something fun and useful.  But, first, you'll need to obtain the following required materials and tools,
+or their equivalent:
+   - Temperature-controlled soldering iron
+   - Medium small Philips screwdriver
+   - [Teensy 3.2 Board without presoldered pins](https://www.pjrc.com/store/teensy32.html) (Note 1)
+   - [Rosin Core, Sn63/Pb37 solder](https://www.amazon.com/Solder-Diameter-Storage-Welding-Soldering/dp/B01N0VNNKO/ref=sr_1_5)
+   - [Copper solder wick](https://www.amazon.com/NTE-Electronics-SW02-10-No-Clean-Blue-098/dp/B0195UVWJ8/ref=sr_1_1_sspa?th=1)
+   - [30 gauge, tin plated, Kynar™ insulated "wire wrap" wire](https://www.amazon.com/gp/product/B006C4ARR4/ref=ppx_yo_dt_b_asin_title_o00_s00) (Note 2)
+   - Precision 30 gauge wire strippers, such as the [Jonard ST-500](https://www.amazon.com/Jonard-ST-500-Adjustable-Precision-Thickness/dp/B001ICLVN4/ref=sr_1_1) (Note 3)
+   
+Note 1: The discontinued [Teensy 3.1](https://www.pjrc.com/teensy/teensy31.html) can also be used, as it is pin compatible with the Teensy 3.2.
 
-Description | Pin | Pin | Description
------------ | --- | --- | -----------
---- | 1 | 28 | ---
---- | 2 | 27 | Ground
---- | 3 | 26 | motorYb
---- | 4 | 25 | motorXb
---- | 5 | 24 | motorXa
-motorYa |  6 | 23 | ---
---- | 7 | 22 | USB Data -
-Ground | 8 | 21 | USB Data +
---- | 9 | 20 | ---
-Power button | 10 | 19 | ---
-Head solenoid | 11 | 18 | ---
-Load button | 12 | 17 | ---
---- | 13 | 16 | ---
---- | 14 | 15 | ---
+Note 2: Kynar insulated, 30 gauge wire wrap wire is strongly recommended because it's tough and because the Kynar (polyvinylidene fluoride)
+insulation won't shrink or melt under typical soldering conditions.
 
-<b>Original PIC16LF1823 (Slave PIC -  handles counting quadratic motor encoder pulses, passes the data to master PIC via SPI):</b>
-Note: this is a 14 pin chip, and the board has a 20 pin location.
+Note 3: at $38, the Jonard ST-500 is a bit on the pricey side.  But, in my experience, if you like to build electronic projects, it's a
+tool worth investing in.  However, if you use it carefully, a less expensive, wire stripping tool, such as the
+[Hakko CHP CSP-30-1](https://www.amazon.com/Hakko-CSP-30-1-Stripper-Maximum-Capacity/dp/B00FZPHMUG/ref=sr_1_4) can also produce good results.
 
-Description | Pin | Pin | Description
------------ | --- | --- | -----------
---- | 1 | 14 | Ground
-encoderXb | 2 | 13 | ---
-encoderXa | 3 | 12 | ---
---- | 4 | 11 | encoderYa
---- | 5 | 10 | ---
---- | 6 | 9 | ---
-LED enable | 7 | 8 | encoderYb
 
-<b>Connections to the Teensy:</b>
+The process involves the following steps:
 
-Connection at Cricut | Connection at Teensy
--------------------- | --------------------
-motorXa | Teensy pin 21 (PTD6, PWM output)
-motorXb | Teensy pin 20 (PTD5, PWM output)
-motorYa | Teensy pin 23 (PTC2, PWM output)
-motorYb | Teensy pin 22 (PTC1, PWM output)
-encoderYa | Teensy pin 17 (PTB1, interrupt input)
-encoderYb | Teensy pin 16 (PTB0, interrupt input)
-encoderXa | Teensy pin 11 (PTC6, interrupt input)
-encoderXb | Teensy pin 12 (PTC7, interrupt input)
-Load button | Teensy pin 14 (PTD1, interrupt input)
-Head solenoid | Teensy pin 13 (PTC5, Output)
-LED Enable | Teensy +3.3v
-Ground | Teensy Ground (may be grounded via USB B connector)
+ 1. Use the Philips screwdriver to open the Cricut Mini's case to get access to its printed circuit control board (PCB). [Click here](markdown/disassembly.md) to see a visual guide on how to disasmble the Cricut Mini. 
+ 2. Unplug the cables connecting the PCB to the front control panel and the various motors and mechanisms.
+ 3. Unsolder and remove the 14 pin and 28 pin "PIC" microprocesors from the PCB.  [Click here](images/removethese.jpg) to see where these are located on the PCB.
+ 
 
-<b>Note:</b>
-Power button is currently unused and unconnected. Future use?
-
-For USB connection, I used a chopped off USB MicroB cable and soldered the wires to the pins on the bottom of the board.
-
-Motor connection (from left to right, looking at the connector - not needed, just for reference):
-
-Pin | Description
---- | -----------
-1 | motor -
-2 | motor +
-3 | sensor com
-4 | A
-5 | LED +
-6 | B
+### more coming soon
