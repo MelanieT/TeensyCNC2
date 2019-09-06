@@ -5,10 +5,9 @@ runs on a Teensy 3.2 board that's been retrofitted into a modified Cricut™ Min
 of corporate tone deafness, Provo Craft, the original makers of the Cricut™ Mini decided in 2018  to make it obsolete by shutting down
 the "[Craft Room](http://inspiration.cricut.com/cricut-craft-room-closing/)" on-line service needed to make the Cricut™ Mini function and
 leaving current owners, such as Matt's wife, unable to use it.  Prior to this, Provo Craft had also sued and shut down at two makers of
-3rd party software that could work with their products and use a form of encrypted communication to discourage anyone from trying to
-create software that can commnicate with their products.
+3rd party software intended to work with their products.  And, as a middle finger to device hackers, use a form of encrypted communication to discourage anyone from trying to create software that can commnicate with their products.
 
-What's ingenious about Matt's "hack" is that it completely bypasses all of Provo Craft's sneaky attempts to control how users can use
+However, Matt's ingenious "hack" completely bypasses all of Provo Craft's sneaky attempts to control how users can use
 their products by replacing the two PIC microcontollers inside the Cricut Mini with an inexpensive, Arm-based microcontroller board, the
 [Teensy 3.2](https://www.pjrc.com/store/teensy32.html).  I came across Matt's work while I was working on my 
 [LaserCut](https://github.com/wholder/LaserCut) program, which is Java-based program that's designed allow users to create 2D vector
@@ -17,7 +16,7 @@ widely used way to send designs to a variety of CNC machines.
 
 ## Fight Back against Planned Obsolence!
 
-If you are reasonably skilled with using a screwdriver and a soldering iron, you should be able easily modify a Cricut Mini in a few hours
+If you are reasonably skilled with using a screwdriver and a soldering iron, you should be able to easily modify a Cricut Mini in a few hours
 and turn an otherwise useless device back into something fun and useful.  But, first, you'll need to obtain the following required materials and tools,
 or their equivalent:
    - Temperature-controlled soldering iron
