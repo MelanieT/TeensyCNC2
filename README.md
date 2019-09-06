@@ -24,24 +24,19 @@ designs and then send them to laser, paper or vinyl cutters.  While Matt's origi
 If you are reasonably skilled with using a screwdriver and a soldering iron, you should be able to easily modify a Cricut Mini in a few hours
 and turn an otherwise useless device back into something fun and useful.  But, first, you'll need to obtain the following required materials and tools,
 or their equivalent:
-   - Temperature-controlled soldering iron
+   - Adjustable, Temperature-controlled Soldering Iron
    - Medium size Philips screwdriver
    - [Teensy 3.2 Board without presoldered pins](https://www.pjrc.com/store/teensy32.html) (Note 1)
-   - [Rosin Core, Sn63/Pb37 solder](https://www.amazon.com/Solder-Diameter-Storage-Welding-Soldering/dp/B01N0VNNKO/)
-   - [Copper solder wick](https://www.amazon.com/NTE-Electronics-SW02-10-No-Clean-Blue-098/dp/B0195UVWJ8/)
-   - [30 gauge, tin plated, Kynar™ insulated "wire wrap" wire](https://www.amazon.com/gp/product/B006C4ARR4/) (Note 2)
-   - Precision, 30 gauge wire strippers, such as the [Jonard ST-500](https://www.amazon.com/Jonard-ST-500-Adjustable-Precision-Thickness/dp/B001ICLVN4/) (Note 3)
+   - [Rosin Core, 60/40 solder](https://www.adafruit.com/product/1886)
+   - [Copper solder wick](https://www.adafruit.com/product/149)
+   - [30 gauge, tin plated, Kynar™ insulated "wire wrap" wire](https://www.adafruit.com/product/1446) (Note 2)
+   - [Precision, 20-30 gauge wire strippers](https://www.adafruit.com/product/527)
    - [Double-sided, 1 inch foam tape](https://www.amazon.com/gp/product/B00347A8GC/)
    
 Note 1: The discontinued [Teensy 3.1](https://www.pjrc.com/teensy/teensy31.html) can also be used, as it is pin compatible with the Teensy 3.2.
 
 Note 2: Kynar insulated, 30 gauge wire wrap wire is strongly recommended because it's tough and because the Kynar (polyvinylidene fluoride)
 insulation won't shrink or melt under typical soldering conditions.
-
-Note 3: at $38, the Jonard ST-500 is a bit on the pricey side.  But, in my experience, if you like to build electronic projects, it's a
-tool worth investing in.  However, if you use it carefully, a less expensive, wire stripping tool, such as the
-[Hakko CHP CSP-30-1](https://www.amazon.com/Hakko-CSP-30-1-Stripper-Maximum-Capacity/dp/B00FZPHMUG/ref=sr_1_4) can also produce good results.
-
 
 The process involves the following steps:
 
