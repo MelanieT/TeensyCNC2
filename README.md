@@ -1,4 +1,4 @@
-<p align="center"><a href="https://github.com/wholder/TeensyCNC2/blob/master/images/TeensyMod.jpg"><img src="https://github.com/wholder/TeensyCNC2/blob/master/images/TeensyMod.jpg" width="75%" height=75%"></a></p>
+<p align="center"><a href="https://github.com/wholder/TeensyCNC2/blob/master/images/teensymod.jpg"><img src="https://github.com/wholder/TeensyCNC2/blob/master/images/teensymod.jpg" width="75%" height=75%"></a></p>
 
 ## TeensyCNC2
 
@@ -48,8 +48,8 @@ The process involves the following steps:
  2. Unsolder and remove the 14 pin and 28 pin "PIC" microprocesors from the PCB.  [Click here](images/removethese.jpg) to see where these are located on the PCB.  This is probably the trickiest part of the conversion, as it normally easiest to use a heat gun to remove surfac emount part.  However, if you are carefull, you can use small diagonal cutters to clip each pin of the IC package to remove the IC and then use the soldering iron to remove the leftover pins.  However, be careful not to damage or nick the delicate traces on the PCB.  Alternatively, you might also try [the technique shows in this YouTube video](https://www.youtube.com/watch?v=CVsmwFAkf7I).
  3. After both ICs are removed, use solder wick to clean up the pads and remove the old solder and inspect the PCB carefully to make sure none of the traces were damaged. Then, use the 60/40 solder to tin each of the pads where you going to connect wires, as indicated with arrows [in this photo](images/solderpads.jpg). Add enough solder so you'll have enough on each pad to tack down a wire later.  Finally, carefully  unsolder resistor R7 shown in the same photo and tin the pad on the left of the PCB.
  4. Download the file [main.hex](https://github.com/wholder/TeensyCNC2/blob/master/main.hex) and use it to [program the Teensy](https://www.pjrc.com/teensy/first_use.html).  Depending on which operating system you use, you'll first need to download the [Teensy Loader](https://www.pjrc.com/teensy/loader.html).
- 5. Attach the Teensy to the MIni's PCB using some double-sided foam tape, [as shown in this photo](images/foamtape.jpg).
- 6. 
+ 5. Attach the Teensy to the MIni's PCB using some double-sided foam tape, [as shown in this photo](images/foamtape.jpg).  Be sure to orient the Teensy so that the end with the USB connector is nearest to the 2 ICs you removed.  I recommend that use two layers of foam tape and make cutouts in the layer closest to the Teensy for the pushbutton and the USB connector.  Then, cover this with another later to stick onto the PCB.
+ 6. Once the Teensy is firmly attached, you can starting cutting lengths of wire wrap wire to make the connections needed to connect the Teensy to the solder pads you tinned in step 3.  [Click here to see step by step instructions](markdown/wiring.md) for the wiring connections.
  
 
 ### more coming soon
