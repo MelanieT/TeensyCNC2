@@ -1,6 +1,6 @@
 ## Wiring
 
-<p align="center"><a href="https://github.com/wholder/TeensyCNC2/blob/master/images/teensypads.jpg"><img src="https://github.com/wholder/TeensyCNC2/blob/master/images/teensypads.jpg" width="95%" height=95%"></a><br>Click for larger view</p>
+<p align="center"><a href="https://github.com/wholder/TeensyCNC2/blob/master/images/teensypads.jpg"><img src="https://github.com/wholder/TeensyCNC2/blob/master/images/teensypads.jpg" width="75%" height=75%"></a><br>Click for larger view</p>
 
 For each pad shown in the picture above, cut a length of 30 gauge wire wrap wire long enough to reach from the pad on the PCB to the indicated pad on the Teensy (note: be careful to connect to the correct pad on the Teensy as some of the pads, such as those for pins 21, 22 amd 23 are labelled at an angle on the Teensy.)
 
