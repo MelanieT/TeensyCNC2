@@ -598,6 +598,7 @@ void LoadYAxis (void) {
     dda_move(250.0f);
     set_position(0.0f, 0.0f);
     matLoaded = false;
+    GPIOD->PCOR |= 0x0010U;                     // Teensy D6 - Grn Load LED D1 (Off)
   } else {
     // Load enough to put tool upper/left position
     INFO("Loading");
@@ -606,6 +607,7 @@ void LoadYAxis (void) {
     dda_move(50.0f);
     set_position(0.0f, 0.0f);
     matLoaded = true;
+    GPIOD->PSOR |= 0x0010U;                     // Teensy D6 - Grn Load LED D1 (On)
   }
   INFO("Done");
 }
