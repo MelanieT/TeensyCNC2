@@ -2,18 +2,20 @@
 
 ## TeensyCNC2
 
+### Note: this page, and the related code is still under development and will likely change when you least expect it.  This notice will be removed when this project is ready for use.
+
 TeensyCNC2 is an updated version of [TeensyCNC](https://github.com/seishuku/TeensyCNC), which is a program created by Matt Williams that
 runs on a Teensy 3.2 board that's been retrofitted into a modified Cricut™ Mini in order to make it useful again.  In an amazing display
 of corporate tone deafness, Provo Craft, the original makers of the Cricut™ Mini decided in 2018  to make it obsolete by shutting down
 the "[Craft Room](http://inspiration.cricut.com/cricut-craft-room-closing/)" on-line service needed to make the Cricut™ Mini function and
 leaving current owners, such as Matt's wife, unable to use it.  Prior to this, Provo Craft had also sued and shut down at two makers of
-3rd party software intended to work with their products.  And, as a middle finger to device hackers, use a form of encrypted communication to discourage anyone from trying to create software that can commnicate with their products.
+3rd party software intended to work with their products.  And, as a middle finger to device hackers, all of Provo Craft's devices seem to use a form of encrypted communication to discourage anyone from trying to create software that can commnicate with their products.
 
 However, Matt's ingenious "hack" completely bypasses all of Provo Craft's sneaky attempts to control how users can use
 their products by replacing the two PIC microcontollers inside the Cricut Mini with an inexpensive, Arm-based microcontroller board, the
 [Teensy 3.2](https://www.pjrc.com/store/teensy32.html).  I came across Matt's work while I was working on my 
 [LaserCut](https://github.com/wholder/LaserCut) program, which is a Java-based program designed to allow users to create 2D vector
-designs and then send them to laser, paper or vinyl cutters.  While Matt's original code worked fine, I decided to rework it on order to make a few changes and improvements, such as:
+designs and then send them to laser, paper or vinyl cutters.  While Matt's original code worked fine, I decided to rework it in order to have a bit of fun, learn about how Matt's code worked and also to make a few changes and improvements, such as:
  
   - Rewriting the G-Code parser using a state machine to make it easier to extend and revise
   - Reversing the Y axis so that the origin of the cutting mat is the upper left rather than the lower left
@@ -39,7 +41,7 @@ Note 1: Because it's now orphaned by Provo Craft, I was able to purchase a new, 
 
 Note 2: The discontinued [Teensy 3.1](https://www.pjrc.com/teensy/teensy31.html) can also be used, as it is pin compatible with the Teensy 3.2.
 
-Note 3: Kynar insulated, 30 gauge wire wrap wire is strongly recommended because it's tough and because the Kynar (polyvinylidene fluoride)
+Note 3: Kynar insulated, 30 gauge wire wrap wire is strongly recommended because it's tough and the Kynar (polyvinylidene fluoride)
 insulation won't shrink or melt under typical soldering conditions.
 
 The process involves the following steps:
@@ -50,6 +52,26 @@ The process involves the following steps:
  4. Download the file [main.hex](https://github.com/wholder/TeensyCNC2/blob/master/main.hex) and use it to [program the Teensy](https://www.pjrc.com/teensy/first_use.html).  Depending on which operating system you use, you'll first need to download the [Teensy Loader](https://www.pjrc.com/teensy/loader.html).
  5. Attach the Teensy to the MIni's PCB using some double-sided foam tape, [as shown in this photo](images/foamtape.jpg).  Be sure to orient the Teensy so that the end with the USB connector is nearest to the 2 ICs you removed.  I recommend that use two layers of foam tape and make cutouts in the layer closest to the Teensy for the pushbutton and the USB connector.  Then, cover this with another later to stick onto the PCB.
  6. Once the Teensy is firmly attached, you can starting cutting lengths of wire wrap wire to make the connections needed to connect the Teensy to the solder pads you tinned in step 3.  [Click here to see step by step instructions](markdown/wiring.md) for the wiring connections.
+ 7. Once you've completed all the wiring connections, I recommend that you use a multimeter set to check continuity with a beep sound and verify all the conenctions one by one.  Also, use a magnifying glass to examine each pad for possible shorts to adjacent pads.  Pay special atteention the connections you made to the Mini's PCB, as those are fairly close together and excess solder could easily bridge one to another.  In fact, just to be sure, use the multimeter to check each adjacent pair for shorts.  You should also use the multimeter to check thet there is not a short from VUSB to Gnd on the Teensy, as that would be very bad.
+ 8. Once you're confident that all the wiring connections are correct, you can reassemble the Mini by following the [disassembly instructions](markdown/disassembly.md) in reverse and you should then be ready to give it a try.  However, I recommend that you first momentarily carefully connect the Mini's power supply to the modified PCB to make sure nothing starts to smoke.
+ 9. As a first test, connect the Mini's power supply and also connect the USB cable to either your computer, or to a source of 5 volts (the Teensy is powered from the USB connector and not from the Mini's power supply.)  Once this is done, the "Power" button (the larger, loer button) on the front panel of the Mini should light up green.  Pressing the "load" button once (the small, upper button with up/down arrows on it) should cause the rollers to spin as it tries to load a cutting mat.  Once in the loaded position, the button should light up green.  Pressing the button again should cause the rollers to spin again for a longer period as it tries to unload the cutting mat, after which the button should go dark to indicate the unloaded position.  If you've gotten this far, congratulations!, your Mini should now be ready to use.
  
-
-### more coming soon
+ ## Sending GCode to a Modified Cricut™ Mini
+ 
+ Matt designed TeensyCNC to accept and process [GCode](https://en.wikipedia.org/wiki/G-code), which is the _lingua franca_ of the CNC world.  My version, TeensyCNC2, is intended to work with my LaserCut program, which is how I recommend you use it.  However, under the hood, TeensyCNC2 still processes GCode, just as Matt's original code did.  To see this in action, you can use a terminal program to connect to your modified Mini and send it GCode commands.  To do this, you'll need to follow the following steps:
+ 
+  1. Make sure your PC can see the Teensy.  In not, depending upon your operating system, you may need to first install a driver (Windows), set up permissions (Linux) before you can use a terminal program to send commands to the Teensy inside your modified Mini.
+  2. Teensy always commuicates at full USB speed, but set your terminal program to 9600 baud with 8 data bits, no parity and 1 stop bit, just in case.
+  3. If not set this way by default, you may also need to configure your terminal program to send either a linefeed (LF), or both a carraige return (CR) and a line feed (LF) when you press Enter" as TeensyCNC2 sees the linefeed (LF) as the signal to process a line of GCode.
+ 
+ Once you have this all set up and you are connected to the Teensy inside the Mini, type "**`G20`**" and press return.  TeensyCNC2 should echo back "**`ok`**" which indicates it has accepted and processed the command.  In this case, **`G20`** tells TeensyCNC2 to begin interpreting all dimensions in "inches" (the default is millimeters and you can set TeensyCNC2 back to millimeters by typing "**`G21`**" and pressing enter.)
+ 
+ You can use the "**`G00`**" or "**`G0`**" command to rapidly move the Mini's cutting, or drawing tool to a new position (with the tool in the raised, nonengaged position.)  For example, to move to position X = 1, Y = 1, you would type "**`G0 X1 Y1`**" and press enter.  Then, to cut or draw, use the "**`G01`**" or "**`G1`**" command to first lower the tool then move.  For example, to cut/draw to position X = 2, Y = 1 type "**`G1 X2 Y1`**" and press enter.  Then, to raise the tool and move it back to the "home" position (X = 0, Y = 2) type "**`G28`**" (home) and press enter.
+ 
+ ## Using Modified Cricut™ Mini with LaserCut
+ 
+ To use LaserCut with the Mini, go to the the [LaserCut Project page on GitHub](https://github.com/wholder/LaserCut) and follow the instructions to download and install LaserCut on your operating system.  Once you have LaserCut running and are familiar with how it works, you can configure it to use the MIni as it's output device by first selecting "**Preferences**" in the "**File**" menu and then choosing "**Mini Cutter**" as the output device.  This will cause a new menu labelled "**Mini Cutter**" to appear near the righthand side of the menu bar.  You can then use the "**Port**" submenu in the "**Mini Cutter**" menu to select the appropriate serial device.  Once laserCut is connected to the Mini, it will rememeber the Port setting so you should not have to set it again.  _However, as mentioned in the section above on "_Sending GCode to a Modified Cricut™ Mini_", you may also need to install a serial driver, or set up permissions depending on the requirments of the oeprating system you are using.)_  
+ 
+ LaserCut should now be ready to work with your modified Mini.  In addition to the Load button on the Mini, can also use the "Load Mat" and "Unload Mat" submenus in the "Mini Cutter" menu to load, or unload the cutting mat, or use the "Send Job to Mini Cutter" to send the currently-open 2D design to the Mini for cutting, or drawing.  You can also use the "Mini Cutter Settings" submenu to set the rate at which the tool moves when cutting or drawing (maximum recommended is 100).  Note; the "Use Path Planner" checkbox, if set, tells LaserCut to optimize the order in which it cuts, or draw lines to make inner cuts in a shape before making outer cuts.  This option is more useful for laser cutters, but I recommend you leave it checked unless you are having some problems with how the Mini is cutting, or draw, in which case you can try unchecking it.
+ 
+ 
