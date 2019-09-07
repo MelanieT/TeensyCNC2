@@ -490,10 +490,10 @@ void parseGcode (const char *line, int length) {
       float cX = iVal + posX;
       float cY = jVal + posY;
       // Calculate the cross product
-      float aX = (posX - cX);
-      float aY = (posY - cY);
-      float bX = (xVal - cX);
-      float bY = (yVal - cY);
+      float aX = posX - cX;
+      float aY = posY - cY;
+      float bX = xVal - cX;
+      float bY = yVal - cY;
       float start_angle, end_angle;
       // CW or CCW
       if (gVal == 2) {

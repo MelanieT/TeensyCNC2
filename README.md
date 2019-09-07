@@ -24,18 +24,21 @@ designs and then send them to laser, paper or vinyl cutters.  While Matt's origi
 If you are reasonably skilled with using a screwdriver and a soldering iron, you should be able to easily modify a Cricut Mini in a few hours
 and turn an otherwise useless device back into something fun and useful.  But, first, you'll need to obtain the following required materials and tools,
 or their equivalent:
+   - A Cricut Mini (model CMNI001 with Power Supply) (1)
    - Adjustable, Temperature-controlled Soldering Iron
    - Medium size Philips screwdriver
-   - [Teensy 3.2 Board without presoldered pins](https://www.pjrc.com/store/teensy32.html) (Note 1)
+   - [Teensy 3.2 Board without presoldered pins](https://www.pjrc.com/store/teensy32.html) (Note 2)
    - [Rosin Core, 60/40 solder](https://www.adafruit.com/product/1886)
    - [Copper solder wick](https://www.adafruit.com/product/149)
-   - [30 gauge, tin plated, Kynar™ insulated "wire wrap" wire](https://www.adafruit.com/product/1446) (Note 2)
+   - [30 gauge, tin plated, Kynar™ insulated "wire wrap" wire](https://www.adafruit.com/product/1446) (Note 3)
    - [Precision, 20-30 gauge wire strippers](https://www.adafruit.com/product/527)
    - [Double-sided, 1 inch foam tape](https://www.amazon.com/gp/product/B00347A8GC/)
    
-Note 1: The discontinued [Teensy 3.1](https://www.pjrc.com/teensy/teensy31.html) can also be used, as it is pin compatible with the Teensy 3.2.
+Note 1: Because it's now orphaned by Provo Craft, I was able to purchase a new, unused Cricut Mini for $30 on Craigslist.  They are usually quite a few of them available on eBay, but often for ridiculously high prices, so you made need to be patient to find one there at a reasonable price.  You might also find them at local swap meets and garage sales.  If you find one missing its power supply, you can substitute an 18 Volt DC laptop power supply that can supply at least 1.8Amps and has a center positive, 5.5 mm OD, 2.5 mm ID Barrel Jack.
 
-Note 2: Kynar insulated, 30 gauge wire wrap wire is strongly recommended because it's tough and because the Kynar (polyvinylidene fluoride)
+Note 2: The discontinued [Teensy 3.1](https://www.pjrc.com/teensy/teensy31.html) can also be used, as it is pin compatible with the Teensy 3.2.
+
+Note 3: Kynar insulated, 30 gauge wire wrap wire is strongly recommended because it's tough and because the Kynar (polyvinylidene fluoride)
 insulation won't shrink or melt under typical soldering conditions.
 
 The process involves the following steps:
