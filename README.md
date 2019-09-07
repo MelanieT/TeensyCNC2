@@ -12,12 +12,12 @@ leaving current owners, such as Matt's wife, unable to use it.  Prior to this, P
 However, Matt's ingenious "hack" completely bypasses all of Provo Craft's sneaky attempts to control how users can use
 their products by replacing the two PIC microcontollers inside the Cricut Mini with an inexpensive, Arm-based microcontroller board, the
 [Teensy 3.2](https://www.pjrc.com/store/teensy32.html).  I came across Matt's work while I was working on my 
-[LaserCut](https://github.com/wholder/LaserCut) program, which is Java-based program designed to allow users to create 2D vector
+[LaserCut](https://github.com/wholder/LaserCut) program, which is a Java-based program designed to allow users to create 2D vector
 designs and then send them to laser, paper or vinyl cutters.  While Matt's original code worked fine, I decided to rework it on order to make a few changes and improvements, such as:
  
   - Rewriting the G-Code parser using a state machine to make it easier to extend and revise
   - Reversing the Y axis so that the origin of the cutting mat is the upper left rather than the lower left
-  - Rework the button press code and add wiring to allow use of the Power button and lEDs on the control panel
+  - Rework the button press code and add wiring to allow use of the Power button and LEDs on the control panel
 
 ## Fight Back against Forced Obsolence!
 
@@ -27,6 +27,7 @@ or their equivalent:
    - A Cricut Mini (model CMNI001 with Power Supply) (1)
    - Adjustable, Temperature-controlled Soldering Iron
    - Medium size Philips screwdriver
+   - Small diagonal cutters
    - [Teensy 3.2 Board without presoldered pins](https://www.pjrc.com/store/teensy32.html) (Note 2)
    - [Rosin Core, 60/40 solder](https://www.adafruit.com/product/1886)
    - [Copper solder wick](https://www.adafruit.com/product/149)
@@ -44,8 +45,8 @@ insulation won't shrink or melt under typical soldering conditions.
 The process involves the following steps:
 
  1. Use the Philips screwdriver to open the Cricut Mini's case to get access to its printed circuit control board (PCB). [Click here](markdown/disassembly.md) to see a visual guide on how to disasmble the Cricut Mini. 
- 2. Unsolder and remove the 14 pin and 28 pin "PIC" microprocesors from the PCB.  [Click here](images/removethese.jpg) to see where these are located on the PCB.  Alternatively, you could use small diagonal cutters to carefully clip each pin of the IC package to remove the IC and then use the soldering iron to remove the leftover pins.  However, be careful not to damage or nick the delicate traces on the PCB.
- 3. Use solder wick to clean up the pads and remove the old solder, then use the Sn63/Pb37 solder to tin each of the pads indicated with arrows [in this photo](images/solderpads.jpg). At the same time, carefully  unsolder resistor R7 shown in the same photo and tin the pad on the left of the PCB.
+ 2. Unsolder and remove the 14 pin and 28 pin "PIC" microprocesors from the PCB.  [Click here](images/removethese.jpg) to see where these are located on the PCB.  This is probably the trickiest part of the conversion, as it normally easiest to use a heat gun to remove surfac emount part.  However, if you are carefull, you can use small diagonal cutters to clip each pin of the IC package to remove the IC and then use the soldering iron to remove the leftover pins.  However, be careful not to damage or nick the delicate traces on the PCB.  Alternatively, you might also try [the technique shows in this YouTube video](https://www.youtube.com/watch?v=CVsmwFAkf7I).
+ 3. After both ICs are removed, use solder wick to clean up the pads and remove the old solder and inspect the PCB carefully to make sure none of the traces were damaged. Then, use the 60/40 solder to tin each of the pads where you going to connect wires, as indicated with arrows [in this photo](images/solderpads.jpg). Add enough solder so you'll have enough on each pad to tack down a wire later.  Finally, carefully  unsolder resistor R7 shown in the same photo and tin the pad on the left of the PCB.
  4. Download the file [main.hex](https://github.com/wholder/TeensyCNC2/blob/master/main.hex) and use it to [program the Teensy](https://www.pjrc.com/teensy/first_use.html).  Depending on which operating system you use, you'll first need to download the [Teensy Loader](https://www.pjrc.com/teensy/loader.html).
  5. Attach the Teensy to the MIni's PCB using some double-sided foam tape, [as shown in this photo](images/foamtape.jpg).
  6. 
