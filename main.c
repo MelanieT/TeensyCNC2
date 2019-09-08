@@ -451,7 +451,7 @@ void parseGcode (const char *line, int length) {
             }
             break;
           case 'F':                                                     // Feed Rate
-            feedrate = (float) intVal / decDivisor;
+            feedrate = ((float) intVal / decDivisor) / scale_to_inches;
             break;
           case 'P':
             pause = (float) intVal / decDivisor;
