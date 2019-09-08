@@ -78,7 +78,7 @@ The process involves the following steps:
  
  Having discontinued support for the Mini, Provo Craft also stopped selling cutting mats that will fit into the Mini's feeder mechanism and the mats used by the Mini are hard to obtain and also different in size from those used by other cutters made by Provo Craft.  However, after some research, I was able to track down a simple way to make my own cutting maps from inexpensive and easily available (at the time this was written) items.  Here's what you'll need:
  
-  1. [Chop Chop 9.5" x 14" The Original Flexible Cutting Mat](https://www.amazon.com/gp/product/B00TZ0F556) A 6 pack for 6!
+  1. [Chop Chop 9.5" x 14" The Original Flexible Cutting Mat](https://www.amazon.com/gp/product/B00TZ0F556) (you get 6 mats for $6!)
   2. [Krylon K07020007 10.25-Ounce Easy Tack Repositionable Adhesive Spray](https://www.amazon.com/gp/product/B000A8AYO4/)
   3. [1" wide Blue Painters Tape](https://www.amazon.com/gp/product/B01MYP8R5B/)
   4. [Grafix Clear .003 Dura-Lar Film, 9-Inch by 12-Inch, 25 Sheets](https://www.amazon.com/gp/product/B002544NHA/) (used to cover and protect the sticky area of the mats)
