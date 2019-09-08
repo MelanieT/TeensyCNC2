@@ -2,6 +2,8 @@
 
 <p align="center"><a href="https://github.com/wholder/TeensyCNC2/blob/master/images/teensypads.jpg"><img src="https://github.com/wholder/TeensyCNC2/blob/master/images/teensypads.jpg" width="75%" height=75%"></a><br>Click for larger view</p>
 
+<p align="center"><img src="https://github.com/wholder/TeensyCNC2/blob/master/images/teensypins.jpg"></p>
+
 For each pad shown in the picture above, cut a length of 30 gauge wire wrap wire long enough to reach from the pad on the PCB to the indicated pad on the Teensy (note: be careful to connect to the correct pad on the Teensy as some of the pads, such as those for pins 21, 22 and 23 are labelled at an angle on the Teensy.)
 
 Next, strip just enough insulation from the end of each wire to make a good connection to the appropriate pads.  Since you've already applied 60/40 solder to these pads, you should be able to hold the tin-plated wire to the pad and touch it with the soldering iron to reflow the solder to make a good connection.  Then, bend the wire, as needed to route it to the connecting pad on the Teensy.  I recommend that you also first pre-apply 60/40 solder to the needed pads on the Teensy so that you make the connection on the Teensy side by holding the wire to the pad while you reapply heat with the soldering iron.
