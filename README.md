@@ -39,6 +39,8 @@ Note 3: Kynar insulated, 30 gauge wire wrap wire is strongly recommended because
 
 ## Modifying a Cricut™ Mini
 
+<p align="center"><img src="https://github.com/wholder/TeensyCNC2/blob/master/images/mechanical.jpg" width="75%" height=75%"></p>
+
  1. Use the Philips screwdriver to open the Cricut Mini's case to get access to its printed circuit control board (PCB). [Click here](markdown/disassembly.md) to see a visual guide on how to disassemble the Cricut Mini. 
  2. Unsolder and remove the 14 pin and 28 pin "PIC" microprocessors from the PCB.  [Click here](images/removethese.jpg) to see where these are located on the PCB.  This is probably the trickiest part of the conversion, as it normally easiest to use a heat gun to remove surfac emount part.  However, if you are careful, you can use small diagonal cutters to clip each pin of the IC package to remove the IC and then use the soldering iron to remove the leftover pins.  However, be careful not to damage or nick the delicate traces on the PCB.  Alternatively, you might also try [the technique shows in this YouTube video](https://www.youtube.com/watch?v=CVsmwFAkf7I).
  3. After both ICs are removed, use solder wick to clean up the pads and remove the old solder and inspect the PCB carefully to make sure none of the traces were damaged. Then, use the 60/40 solder to tin each of the pads where you going to connect wires, as indicated with arrows [in this photo](images/solderpads.jpg). Add enough solder so you'll have enough on each pad to tack down a wire later.  Finally, carefully  unsolder resistor R7 shown in the same photo and tin the pad on the left of the PCB.
