@@ -2,11 +2,11 @@
 
 <p align="center"><a href="https://github.com/wholder/TeensyCNC2/blob/master/images/teensypads.jpg"><img src="https://github.com/wholder/TeensyCNC2/blob/master/images/teensypads.jpg" width="75%" height=75%"></a><br>Click for larger view</p>
 
-For each pad shown in the picture above, cut a length of 30 gauge wire wrap wire long enough to reach from the pad on the PCB to the indicated pad on the Teensy (note: be careful to connect to the correct pad on the Teensy as some of the pads, such as those for pins 21, 22 amd 23 are labelled at an angle on the Teensy.)
+For each pad shown in the picture above, cut a length of 30 gauge wire wrap wire long enough to reach from the pad on the PCB to the indicated pad on the Teensy (note: be careful to connect to the correct pad on the Teensy as some of the pads, such as those for pins 21, 22 and 23 are labelled at an angle on the Teensy.)
 
-Next, strip just enough insulation from the end of each wire to make a good connection to the appropriate pads.  Since you've already applied 60/40 solder to these pads, you should be able to hold the tin-plated wire to the pad and touch it with the soldering iron to reflow the solder to make a good connection.  Then, bend the wire, as needed to route it to the conecting pad on the Teensy.  I recommend that you also first preapply 60/40 solder to the needed pads on the Teensy so that you make the connection on the Teensy side by holding the wire to the pad while you reapply heat with the soldering iron.
+Next, strip just enough insulation from the end of each wire to make a good connection to the appropriate pads.  Since you've already applied 60/40 solder to these pads, you should be able to hold the tin-plated wire to the pad and touch it with the soldering iron to reflow the solder to make a good connection.  Then, bend the wire, as needed to route it to the connecting pad on the Teensy.  I recommend that you also first pre-apply 60/40 solder to the needed pads on the Teensy so that you make the connection on the Teensy side by holding the wire to the pad while you reapply heat with the soldering iron.
 
-Repeat the above steps for all of the needed connections.  I reccommend first making all the connections from the 14 Pin PIN and then making the connections from the 28 pin PIC and from resistor R7, as listed below:
+Repeat the above steps for all of the needed connections.  I recommend first making all the connections from the 14 Pin PIN and then make the connections from the 28 pin PIC and, finally, from resistor R7, as listed below:
 
  - Connect **D8** on the PCB to **pin D8** on the Teensy
  - Connect **D7** on the PCB to **pin D7** on the Teensy
@@ -30,4 +30,5 @@ Repeat the above steps for all of the needed connections.  I reccommend first ma
  
  <p align="center"><a href="https://github.com/wholder/TeensyCNC2/blob/master/images/teensymod.jpg"><img src="https://github.com/wholder/TeensyCNC2/blob/master/images/teensymod.jpg" width="95%" height=95%"></a><br>Click for larger view</p>
  
+
 
