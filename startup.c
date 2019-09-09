@@ -6,7 +6,6 @@
 #include "MK20D10.h"
 #include <string.h>
 #include <stdlib.h>
-#include "syscalls.h"
 
 extern char __stack[];
 
@@ -31,7 +30,7 @@ extern void __attribute__ ((interrupt)) usb_isr (void);
 
 // Interrupt vector table
 __attribute__ ((used, section(".isr_vector"))) void (*const __vect_table[]) (void) = {
-        (void *) &__stack,    //	0x00	ivINT_Initial_Stack_Pointer
+        (void *) &__stack,  //	0x00	ivINT_Initial_Stack_Pointer
         __thumb_startup,    //	0x01	ivINT_Initial_Program_Counter
         Cpu_Interrupt,      //	0x02	ivINT_NMI
         Cpu_Interrupt,      //	0x03	ivINT_Hard_Fault
@@ -46,7 +45,7 @@ __attribute__ ((used, section(".isr_vector"))) void (*const __vect_table[]) (voi
         Cpu_Interrupt,      //	0x0C	ivINT_DebugMonitor
         Cpu_Interrupt,      //	0x0D	ivINT_Reserved13
         Cpu_Interrupt,      //	0x0E	ivINT_PendableSrvReq
-        SysTick_IRQHandler,    //	0x0F	ivINT_SysTick
+        SysTick_IRQHandler, //	0x0F	ivINT_SysTick
         Cpu_Interrupt,      //	0x10	ivINT_DMA0
         Cpu_Interrupt,      //	0x11	ivINT_DMA1
         Cpu_Interrupt,      //	0x12	ivINT_DMA2
@@ -120,7 +119,7 @@ __attribute__ ((used, section(".isr_vector"))) void (*const __vect_table[]) (voi
         Cpu_Interrupt,      //	0x56	ivINT_PIT2
         Cpu_Interrupt,      //	0x57	ivINT_PIT3
         Cpu_Interrupt,      //	0x58	ivINT_PDB0
-        usb_isr,        //	0x59	ivINT_USB0
+        usb_isr,            //	0x59	ivINT_USB0
         Cpu_Interrupt,      //	0x5A	ivINT_USBDCD
         Cpu_Interrupt,      //	0x5B	ivINT_Reserved91
         Cpu_Interrupt,      //	0x5C	ivINT_Reserved92
@@ -141,7 +140,7 @@ __attribute__ ((used, section(".isr_vector"))) void (*const __vect_table[]) (voi
         Cpu_Interrupt,      //	0x6B	ivINT_PORTE
         Cpu_Interrupt,      //	0x6C	ivINT_Reserved108
         Cpu_Interrupt,      //	0x6D	ivINT_Reserved109
-        Cpu_Interrupt      //	0x6E	ivINT_SWI
+        Cpu_Interrupt       //	0x6E	ivINT_SWI
     };
 
 // Flash configuration field

@@ -522,7 +522,7 @@ void parseGcode (const char *line, int length) {
       }
     } break;
     case 4:                               // Dwell for P seconds
-      DelayMS((int) (pause * 1000.0f));
+      DelayMS((uint32_t) (pause * 1000.0f));
       break;
   }
   switch (cancelling) {
@@ -742,7 +742,7 @@ int main (void) {
       INFO("POWER_LONG_PRESS");
       break;
     }
-    uint32_t incoming = usb_serial_available();
+    int incoming = usb_serial_available();
     while (incoming-- > 0) {
       char cc = (char) usb_serial_getchar();
       if (cancelling == NO_CANCEL) {

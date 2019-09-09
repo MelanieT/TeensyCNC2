@@ -20,8 +20,6 @@ add_executable(TeensyCNC2
         pwm.c
         pwm.h
         startup.c
-        syscalls.c
-        syscalls.h
         USB/usb_desc.c
         USB/usb_desc.h
         USB/usb_dev.c
