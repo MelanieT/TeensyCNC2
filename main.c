@@ -632,57 +632,37 @@ void EndJob (void) {
 
 uint8_t getButton () {
   static uint32_t lastCheck = 0;
-  static uint8_t  loadState = 0;
-  static uint16_t loadLong = 0;
-  static uint8_t  powerState = 0;
-  static uint16_t powerLong = 0;
-  if ((Tick - lastCheck) > 10 * 1000) {
-    // Check buttons every 10 ms
-    bool load = !(GPIOD->PDIR & 0x0002U);       // Teensy D14 - Load Button
-    switch (loadState) {
-      case 0:                                   // Waiting for Load Button press
-        if (load) {
-          loadState++;                          // Load Pressed
-        }
-        loadLong = 0;
-        break;
-      case 1:                                   // Wait for release, or long press
-        if (!load) {
-          loadState = 0;
-          return LOAD_SHORT_PRESS;
-        } else if (loadLong++ > 100) {          // If held for > 1 second, then long press
-          loadState++;                          // Load Long Press
-          return LOAD_LONG_PRESS;
-        }
-        break;
-      case 2:                                   // Wait for release
-        if (!load) {
-          loadState = 0;
-        }
-        break;
-    }
-    bool power = !(GPIOD->PDIR & 0x0080U);      // Teensy D5 - Power Button
-    switch (powerState) {
-      case 0:                                   // Waiting for Power Button press
-        if (power) {
-          powerState++;                         // Power Pressed
-        }
-        powerLong = 0;
-        break;
-      case 1:                                   // Wait for release, or long press
-        if (!power) {
-          powerState = 0;
-          return POWER_SHORT_PRESS;
-        } else if (powerLong++ > 100) {         // If held for > 1 second, then long press
-          powerState++;                         // Power Long Press
-          return POWER_LONG_PRESS;
-        }
-        break;
-      case 2:                                   // Wait for release
-        if (!power) {
-          powerState = 0;
-        }
-        break;
+  static uint16_t mask[] = {0x0002U, 0x0080U};    // Load, Power
+  static uint8_t  state[] = {0, 0};
+  static uint16_t longCount[] = {0, 0};
+  if ((Tick - lastCheck) > 10 * 1000) {           // Check buttons every 10 ms
+    for (int ii = 0; ii < 2; ii++) {
+      bool pressed = !(GPIOD->PDIR & mask[ii]);   // Check for button press
+      switch (state[ii]) {
+        case 0:                                   // Waiting for Load Button press
+          if (pressed) {
+            state[ii] = 1;                        // Load Pressed
+            longCount[ii] = 0;
+          }
+          break;
+        case 1:                                   // Debounce check
+          state[ii] = pressed ? 2 : 0;
+          break;
+        case 2:                                   // Wait for release, or long press
+          if (!pressed) {
+            state[ii] = 0;
+            return ii * 2 + 1;                    // load short = 1, power short = 3
+          } else if (longCount[ii]++ > 100) {     // If held for > 1 second, then long press
+            state[ii] = 3;                        // Load Long Press
+            return (ii + 1) * 2 ;                 // load long = 2, power long = 4
+          }
+          break;
+        case 3:                                   // Wait for button release
+          if (!pressed) {
+            state[ii] = 0;
+          }
+          break;
+      }
     }
     lastCheck = Tick;
   }
