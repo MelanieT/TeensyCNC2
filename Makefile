@@ -17,7 +17,6 @@ ASFLAGS = -mcpu=cortex-m4
 LDFLAGS  = -lm -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -specs=nosys.specs -nostartfiles -TMK20D10_flash.ld
 
 CC = arm-none-eabi-gcc
-AS = arm-none-eabi-as
 STRIP = arm-none-eabi-strip
 OBJCOPY = arm-none-eabi-objcopy
 
@@ -36,11 +35,5 @@ $(PROJECT).elf: $(OBJS)
 clean:
 	rm -f $(OBJS) $(PROJECT).hex $(PROJECT).elf
 
-.c.o :
-	$(CC) $(CFLAGS) -c $< -o $@    
-
-.cpp.o :
+%.o : %.c %.h cmsis_gcc.h core_cm4.h core_cmFunc.h core_cmInstr.h core_cmSimd.h MK20D10.h
 	$(CC) $(CFLAGS) -c $< -o $@
-
-.s.o :
-	$(AS) $(ASFLAGS) -o $@ $<
