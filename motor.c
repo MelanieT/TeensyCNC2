@@ -221,6 +221,8 @@ void Motor_Init (void) {
   // Bus clock / Freq = FTM1_MOD
   // 36MHz / Freq = FTM1_MOD
   // MOD = 9 = 4000000Hz (4Mhz)
+  // WRH: I think tha actual input to FTM1 32,000 Hz.
+  //  - Reference sections 3.8.2.3 and 5.3 of the "K20 Sub-Family Reference Manual"
   FTM1->MOD = FTM_MOD_MOD(9 - 1);
   NVIC_SetPriority(FTM1_IRQn, 0x10);
   NVIC_EnableIRQ(FTM1_IRQn);
