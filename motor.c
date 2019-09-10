@@ -141,7 +141,7 @@ int32_t lastErrorX = 0;
 int32_t lastErrorY = 0;
 
 void __attribute__ ((interrupt)) Cpu_ivINT_FTM1 (void) {
-  // Is the overflow interrupt flag pending?
+  // Is the overflow interrupt flag pending? (measured at approx 3500 Hz)
   if (FTM1->SC & FTM_SC_TOF_MASK) {
     // Clear flag
     FTM1->SC &= ~FTM_SC_TOF_MASK;
