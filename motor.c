@@ -53,13 +53,19 @@ const int8_t Quad_Table[4][4][4] =
 #define YENCODER_GET_PINS() ((GPIOB->PDIR & 0x0003U) >> 0U)    // Encoder YA/YB
 
 // Current encoder quadratic value
-uint8_t EncoderQuad[2];
+uint8_t encoderQuadX;
+uint8_t encoderQuadY;
 
-// Last quadratic value
-uint8_t EncoderPrevQuad[2];
+// Previous encoder quadratic value
+uint8_t encoderPrevQuadX;
+uint8_t encoderPrevQuadY;
 
-volatile int32_t Target[2] = {0, 0};  // Encoder coords to target (these do the moving)
-volatile int32_t EncoderPos[2];       // Actual encoder tracking coords
+// Encoder coords to target (these do the moving)
+volatile int32_t targetX = 0;
+volatile int32_t targetY = 0;
+
+volatile int32_t encoderPosX;
+volatile int32_t encoderPosY;
 
 // Set X axis motor PWM, neg values run opposite direction
 void MotorCtrlX (int32_t PWM) {
@@ -85,54 +91,54 @@ void MotorCtrlY (int32_t PWM) {
 
 // X encoder interrupt
 void __attribute__ ((interrupt)) Cpu_ivINT_PORTC (void) {
-  int8_t new_step;
-  uint8_t c12;
-
   // Check for interrupt flag for either input
   if ((PORTC->PCR[6] & PORT_PCR_ISF_MASK) || (PORTC->PCR[7] & PORT_PCR_ISF_MASK)) {
     // Clear the flag(s)
     PORTC->PCR[6] |= PORT_PCR_ISF_MASK;
     PORTC->PCR[7] |= PORT_PCR_ISF_MASK;
-
     // Get the encoder status
-    c12 = XENCODER_GET_PINS();
+    uint8_t c12 = XENCODER_GET_PINS();
     // Retreive directional data from quadrature lookup table
-    new_step = Quad_Table[EncoderPrevQuad[0]][EncoderQuad[0]][c12];
+    int8_t new_step = Quad_Table[encoderPrevQuadX][encoderQuadX][c12];
     // Store the previous, last value
-    EncoderPrevQuad[0] = EncoderQuad[0];
+    encoderPrevQuadX = encoderQuadX;
     // Store the current, last value
-    EncoderQuad[0] = c12;
-    if (new_step == 3) {}         // 3 is an error
-    else if (new_step != 0)       // It's good?
-      EncoderPos[0] += new_step;  // Count it in whatever direction it's going
+    encoderQuadX = c12;
+    if (new_step == 3) {            // 3 is an error
+      // Ignore error
+    } else if (new_step != 0) {     // It's good?
+      encoderPosX += new_step;    // Count it in whatever direction it's going
+    }
   }
 }
 
 // Y encoder interrupt, exactly as X axis
 void __attribute__ ((interrupt)) Cpu_ivINT_PORTB (void) {
-  int8_t new_step;
-  uint8_t c12;
   if ((PORTB->PCR[0] & PORT_PCR_ISF_MASK) || (PORTB->PCR[1] & PORT_PCR_ISF_MASK)) {
     PORTB->PCR[0] |= PORT_PCR_ISF_MASK;
     PORTB->PCR[1] |= PORT_PCR_ISF_MASK;
-    c12 = YENCODER_GET_PINS();
-    new_step = Quad_Table[EncoderPrevQuad[1]][EncoderQuad[1]][c12];
-    EncoderPrevQuad[1] = EncoderQuad[1];
-    EncoderQuad[1] = c12;
+    uint8_t c12 = YENCODER_GET_PINS();
+    int8_t new_step = Quad_Table[encoderPrevQuadY][encoderQuadY][c12];
+    encoderPrevQuadY = encoderQuadY;
+    encoderQuadY = c12;
     if (new_step == 3) {
-    } else if (new_step != 0 && new_step < 3)
-      EncoderPos[1] += new_step;
+      // Ignore error
+    } else if (new_step != 0) {
+      encoderPosY += new_step;
+    }
   }
 }
 
 // PID stuff
 
-//Position multiplier
+// Position multiplier
 #define KP 5000.0f
 // Derivative multiplier
 #define KD 24000.0f
+
 // Previous derivative error
-int32_t lastError[2] = {0, 0};
+int32_t lastErrorX = 0;
+int32_t lastErrorY = 0;
 
 void __attribute__ ((interrupt)) Cpu_ivINT_FTM1 (void) {
   // Is the overflow interrupt flag pending?
@@ -142,27 +148,24 @@ void __attribute__ ((interrupt)) Cpu_ivINT_FTM1 (void) {
 
     // Run proportional control
     // find the error term of current position - target
-    int32_t error[2] =
-        {
-            Target[0] - EncoderPos[0],
-            Target[1] - EncoderPos[1]
-        };
+    int32_t errorX = targetX - encoderPosX;
+    int32_t errorY = targetY - encoderPosY;
 
     //generalized PID formula
     //correction = Kp * error + Kd * (error - prevError)
-    MotorCtrlX(KP * error[0] + KD * (float) (error[0] - lastError[0]));
-    MotorCtrlY(KP * error[1] + KD * (float) (error[1] - lastError[1]));
+    MotorCtrlX(KP * errorX + KD * (float) (errorX - lastErrorX));
+    MotorCtrlY(KP * errorY + KD * (float) (errorY - lastErrorY));
 
-    // Store pervious error
-    lastError[0] = error[0];
-    lastError[1] = error[1];
+    // Store previous error
+    lastErrorX = errorX;
+    lastErrorY = errorY;
   }
 }
 
 // Sets PID interrupt to system clock, enabling it.
 void MotorEnable (void) {
-  lastError[0] = 0;
-  lastError[1] = 0;
+  lastErrorX = 0;
+  lastErrorY = 0;
   __disable_irq();
   FTM1->SC = (FTM1->SC & (~(FTM_SC_CLKS_MASK & FTM_SC_TOF_MASK))) | (0x08U);
   FTM1->SC = FTM_SC_TOIE_MASK | FTM_SC_CLKS(0x02) | FTM_SC_PS(0x00);
@@ -226,8 +229,8 @@ void Motor_Init (void) {
   FTM1->SC = FTM_SC_TOIE_MASK | FTM_SC_CLKS(0x02) | FTM_SC_PS(0x00);
 
   // Initialize encoder variables
-  EncoderQuad[0] = XENCODER_GET_PINS();
-  EncoderPrevQuad[0] = EncoderQuad[0];
-  EncoderQuad[1] = YENCODER_GET_PINS();
-  EncoderPrevQuad[1] = EncoderQuad[1];
+  encoderQuadX = XENCODER_GET_PINS();
+  encoderPrevQuadX = encoderQuadX;
+  encoderQuadY = YENCODER_GET_PINS();
+  encoderPrevQuadY = encoderQuadY;
 }

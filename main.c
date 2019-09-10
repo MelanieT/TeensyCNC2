@@ -25,8 +25,11 @@
 extern volatile uint32_t Tick;
 
 // Axis' target steps (absolute) and encoder counts
-extern volatile int32_t Target[2];
-extern volatile int32_t EncoderPos[2];
+extern volatile int32_t targetX;
+extern volatile int32_t targetY;
+
+extern volatile int32_t encoderPosX;
+extern volatile int32_t encoderPosY;
 
 float max(float a, float b) {
   return a > b ? a : b;
@@ -53,8 +56,8 @@ float scale_to_inches = 1.0f;       // Default to inches at start.
 float   posX = 0;                   // Current X Position
 float   posY = 0;                   // Current Y Position
 float   posZ = 0;                   // Current Z Position
-float   targetX = 0;                // Target X Position
-float   targetY = 0;                // Target Y Position
+float   newX = 0;                   // New X Position
+float   newY = 0;                   // New Y Position
 float   deltaX = 0;                 // Delta X
 float   deltaY = 0;                 // Delta Y
 float   distance = 0;               // Delta Distance
@@ -140,13 +143,13 @@ void HeadDown (void) {
 
 // Calculates axis deltas, used any time target units change
 void calculate_deltas (void) {
-  deltaX = fabsf(targetX - posX);
-  deltaY = fabsf(targetY - posY);
+  deltaX = fabsf(newX - posX);
+  deltaY = fabsf(newY - posY);
   distance = sqrtf(deltaX * deltaX + deltaY * deltaY);
   int32_t csX = (posX * X_STEPS_PER_INCH);
   int32_t csY = (posY * Y_STEPS_PER_INCH);
-  int32_t tsX = (targetX * X_STEPS_PER_INCH);
-  int32_t tsY = (targetY * Y_STEPS_PER_INCH);
+  int32_t tsX = (newX * X_STEPS_PER_INCH);
+  int32_t tsY = (newY * Y_STEPS_PER_INCH);
   dxSteps = abs(tsX - csX);
   dySteps = abs(tsY - csY);
   dirX = (tsX - csX) > 0 ? 1 : -1;    // X axis
@@ -163,8 +166,8 @@ bool  yOverX = false;
 
 void set_target (float x, float y) {
   // Set the target location
-  targetX = x;
-  targetY = y;
+  newX = x;
+  newY = y;
   // Recalculate deltas
   calculate_deltas();
   // Set up total steps from dominant axis and set a flag for which one
@@ -196,31 +199,31 @@ void dda_move (float feedRate) {
   // Loop until we're out of steps, or it's interrupted by button press
   while ((cancelling == NO_CANCEL) && dda_steps--) {
     if (yOverX) {
-      Target[1] += dirY;
+      targetY += dirY;
       dda_over += dxSteps;
     } else {
-      Target[0] += dirX;
+      targetX += dirX;
       dda_over += dySteps;
     }
     if (dda_over >= (yOverX ? dySteps : dxSteps)) {
       if (yOverX) {
-        Target[0] += dirX;
+        targetX += dirX;
         dda_over -= dySteps;
       } else {
-        Target[1] += dirY;
+        targetY += dirY;
         dda_over -= dxSteps;
       }
     }
     // Enforce soft limits since there's no safe hard stop.
-    if ((Target[0] < 0) || (Target[0] > X_MAT_STEPS)) {
+    if ((targetX < 0) || (targetX > X_MAT_STEPS)) {
       cancelling = SOFTSTOP_CANCEL;
       break;
     }
     DelayUS(delay);
   }
   // Arrived at target
-  posX = targetX;
-  posY = targetY;
+  posX = newX;
+  posY = newY;
   // Recalculate deltas
   calculate_deltas();
 }
@@ -394,10 +397,10 @@ void parseGcode (const char *line, int length) {
                 dda_move(100.0f);
                 DelayMS(100);
                 // Zero out encoder and step positions
-                EncoderPos[0] = 0;
-                EncoderPos[1] = 0;
-                Target[0] = 0;
-                Target[1] = 0;
+                encoderPosX = 0;
+                encoderPosY = 0;
+                targetX = 0;
+                targetY = 0;
                 break;
               case 90:                                                  // Set Absolute Mode (default)
                 abs_mode = true;
@@ -551,7 +554,7 @@ void HomeXAxis (void) {
   // Disable motor drive PID loop
   MotorDisable();
   // Store current X encoder position
-  prevcount = EncoderPos[0];
+  prevcount = encoderPosX;
   // Store current tick
   prevtime = Tick;
   // Drive the X motor home with enough torque to move it at a good pace, but not so much that it can't be stopped by the hard-stop.
@@ -562,13 +565,13 @@ void HomeXAxis (void) {
     // Velocity of motion over 1mS (1000uS)
     if ((Tick - prevtime) > 1000) {
       // Calculate the delta position from the last mS
-      int32_t dC = abs(EncoderPos[0] - prevcount);
+      int32_t dC = abs(encoderPosX - prevcount);
       // If the velocity drops below 1 step/mS, we've hit the hard-stop and drop out of the loop
       if (dC < 1) {
         break;
       }
       // Otherwise, update the previous position/time and continue on
-      prevcount = EncoderPos[0];
+      prevcount = encoderPosX;
       prevtime = Tick;
     }
   }
@@ -576,10 +579,10 @@ void HomeXAxis (void) {
   MotorCtrlX(0);
   DelayMS(100);
   // Zero out encoder and step positions
-  EncoderPos[0] = 0;
-  EncoderPos[1] = 0;
-  Target[0] = 0;
-  Target[1] = 0;
+  encoderPosX = 0;
+  encoderPosY = 0;
+  targetX = 0;
+  targetY = 0;
   // Zero out the CNC position
   set_position(0.0f, 0.0f);
   // Let it settle again and reenable the PID loop
@@ -619,10 +622,10 @@ void EndJob (void) {
   dda_move(100.0f);
   DelayMS(100);
   // Zero out encoder and step positions
-  EncoderPos[0] = 0;
-  EncoderPos[1] = 0;
-  Target[0] = 0;
-  Target[1] = 0;
+  encoderPosX = 0;
+  encoderPosY = 0;
+  targetX = 0;
+  targetY = 0;
 }
 
 #define LOAD_SHORT_PRESS    1
