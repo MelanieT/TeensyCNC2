@@ -80,7 +80,7 @@ Wayne's Notes
  *    8 - Encoder YB        D16
  *   11 - Encoder YA        D17
  *
- *  Teensy 3.2 Pin Port to Pin Mapping
+ *  Teensy 3.2 Pin to Port to IC Pin Mapping
  *  Teensy  Port    Pin     Function
  *     D0 - PTB16, Pin 39 - Unused
  *     D1 - PTB17, Pin 40 - Unused
