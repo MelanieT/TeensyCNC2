@@ -217,6 +217,7 @@ void set_position(float x, float y)
 // Run the actual move, stripped bare, hopefully makes it faster
 void dda_move(float feedRate)
 {
+    feedRate *= scale_to_inches;
     // Calculate the length of the line to move and how long it will take to get there
     int32_t total  = dxSteps > dySteps ? dxSteps : dySteps;
     uint32_t delay = ((distance * 60000000.0f) / feedRate) / total;
@@ -748,7 +749,7 @@ void LoadYAxis(void)
         INFO("Unloading");
         set_position(0.0f, 0.0f);
         set_target(0.0f, -14.0f);
-        dda_move(250.0f * MM_TO_INCHES);
+        dda_move(250.0f);
         set_position(0.0f, 0.0f);
         matLoaded    = false;
         GPIOD->PCOR |= 0x0010U; // Teensy D6 - Grn Load LED D1 (Off)
@@ -759,7 +760,7 @@ void LoadYAxis(void)
         INFO("Loading");
         set_position(0.0f, 0.0f);
         set_target(0.0f, 1.75f);
-        dda_move(50.0f * MM_TO_INCHES);
+        dda_move(50.0f);
         set_position(0.0f, 0.0f);
         matLoaded    = true;
         GPIOD->PSOR |= 0x0010U; // Teensy D6 - Grn Load LED D1 (On)
@@ -773,7 +774,7 @@ void EndJob(void)
 
     // Return home at end of job, hopefully future will allow home position to be retained after load/unloads
     set_target(0.0f, 0.0f);
-    dda_move(100.0f * MM_TO_INCHES);
+    dda_move(100.0f);
     DelayMS(100);
 
     // Zero out encoder and step positions
