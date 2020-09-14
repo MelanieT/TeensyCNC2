@@ -87,12 +87,9 @@ enum
 } cancelling = NO_CANCEL;
 
 // Function prototypes for local functions
-void
-LoadYAxis(void);
-void
-EndJob(void);
-uint8_t
-getButton();
+void LoadYAxis(void);
+void EndJob(void);
+uint8_t getButton();
 
 // Some helpful printing functions.
 void cdc_print(char * s)
@@ -751,7 +748,7 @@ void LoadYAxis(void)
         INFO("Unloading");
         set_position(0.0f, 0.0f);
         set_target(0.0f, -14.0f);
-        dda_move(250.0f);
+        dda_move(250.0f * MM_TO_INCHES);
         set_position(0.0f, 0.0f);
         matLoaded    = false;
         GPIOD->PCOR |= 0x0010U; // Teensy D6 - Grn Load LED D1 (Off)
@@ -762,7 +759,7 @@ void LoadYAxis(void)
         INFO("Loading");
         set_position(0.0f, 0.0f);
         set_target(0.0f, 1.75f);
-        dda_move(50.0f);
+        dda_move(50.0f * MM_TO_INCHES);
         set_position(0.0f, 0.0f);
         matLoaded    = true;
         GPIOD->PSOR |= 0x0010U; // Teensy D6 - Grn Load LED D1 (On)
@@ -776,7 +773,7 @@ void EndJob(void)
 
     // Return home at end of job, hopefully future will allow home position to be retained after load/unloads
     set_target(0.0f, 0.0f);
-    dda_move(100.0f);
+    dda_move(100.0f * MM_TO_INCHES);
     DelayMS(100);
 
     // Zero out encoder and step positions
