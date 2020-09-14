@@ -353,8 +353,8 @@ void __low_level_init(void)
     LLWU->RST   = LLWU_RST_LLRSTE_MASK;
     NVIC_SetPriority(USB0_IRQn, 0x00);
     NVIC_SetPriority(LVD_LVW_IRQn, 0x00);
-    GPIOB->PDDR &= ~GPIO_PDDR_PDD(0x03);
-    GPIOC->PDDR &= ~GPIO_PDDR_PDD(0xC0);
+    GPIOB->PDDR &= ~GPIO_PDDR_PDD(0x0b);
+    GPIOC->PDDR &= ~GPIO_PDDR_PDD(0xd0);
 
     // Set up SysTick
     SysTick->LOAD = (72000000 / 1000000) - 1;

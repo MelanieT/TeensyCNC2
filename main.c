@@ -51,7 +51,8 @@ float max(float a, float b)
 #define CURVE_SECTION_INCHES 0.005f
 
 // Unit scaler, 1.0 is no scale (inches), 1/25.4 is metric working units
-float scale_to_inches = 1.0f; // Default to inches at start.
+#define MM_TO_INCHES 25.4f
+float scale_to_inches = MM_TO_INCHES; // Default to mm at start.
 
 // Current, Target, and Delta axis units (working units, inches, MM, etc)
 float posX     = 0; // Current X Position
@@ -125,7 +126,7 @@ void SetJobDefaults(void)
 {
     feedrate        = 90.0f;
     abs_mode        = true;
-    scale_to_inches = 1.0f;
+    scale_to_inches = MM_TO_INCHES;
 }
 
 // Resets Teensy into boot loader mode (for uploading new code)
@@ -476,7 +477,7 @@ void parseGcode(const char * line, int length)
                                     break;
 
                                 case 21: // Set Units to Millimeters
-                                    scale_to_inches = 25.4f;
+                                    scale_to_inches = MM_TO_INCHES;
                                     break;
 
                                 case 28: // Go home
@@ -845,18 +846,35 @@ uint8_t getButton()
     return 0;
 } /* getButton */
 
+void InitCricutBoard(void)
+{
+    // Initialize X/Y motor PWM channels, set 0 duty (FFFFh = 0%, 0 = 100%)
+    PWM_Init();
+    PWM_SetRatio(0x00, 0xFFFF);
+    PWM_SetRatio(0x01, 0xFFFF);
+    PWM_SetRatio(0x05, 0xFFFF);
+    PWM_SetRatio(0x06, 0xFFFF);
+
+    Motor_Init();     // Initialize motor PID control and encoder interrupts
+
+    HomeXAxis();      // Home the X axis
+
+    SetJobDefaults(); // Setup defaults
+}
+
 int main(void)
 {
     uint32_t lastactive = 0;
     char lineBuf[MAX_COMMAND];
     uint8_t charCount = 0;
+    uint8_t isOn = 1;
 
     // Head up/down Solenoid uses Teensy D13 (PTC5 output, also Teensy's onboard LED)
     PORTC->PCR[5] = PORT_PCR_MUX(1); // Set PORTC_PCR5 MUX Field to GPIO
     GPIOC->PDDR  |= 0x0020U;         // Teensy D13 - Solenoid (set as output)
     GPIOC->PCOR  |= 0x0020U;         // Teensy D13 - Solenoid Off
 
-    // Enable control of D1 Grn Power LED/\, Encoders and Motors using Teensy D8 (PTD3 output, PIC14 Pin 7)
+    // Enable control of D1 Grn Power LED, Encoders and Motors using Teensy D8 (PTD3 output, PIC14 Pin 7)
     PORTD->PCR[3] = PORT_PCR_MUX(1); // Set PORTD_PCR3 MUX Field to GPIOR
     GPIOD->PDDR  |= 0x0008U;         // Teensy D8 - Grn Power LED D3 (set as output)
     GPIOD->PSOR  |= 0x0008U;         // Teensy D8 - Grn Power LED D3 (Must be On to enable Encoders & Motors)
@@ -879,20 +897,9 @@ int main(void)
     PORTD->PCR[1] = PORT_PCR_MUX(1); // Set PORTD_PCR1 MUX Field to GPIO
     GPIOD->PDDR  &= ~0x0002U;        // Teensy D14 - Load Button (set as input)
 
-    // Initialize X/Y motor PWM channels, set 0 duty (FFFFh = 0%, 0 = 100%)
-    PWM_Init();
-    PWM_SetRatio(0x00, 0xFFFF);
-    PWM_SetRatio(0x01, 0xFFFF);
-    PWM_SetRatio(0x05, 0xFFFF);
-    PWM_SetRatio(0x06, 0xFFFF);
-
-    Motor_Init();     // Initialize motor PID control and encoder interrupts
+    InitCricutBoard();
 
     usb_init();       // Initialize USB CDC virtual serial device
-
-    HomeXAxis();      // Home the X axis
-
-    SetJobDefaults(); // Setup defaults
 
     // Read and process incoming gcode
     while (true)
@@ -930,6 +937,22 @@ int main(void)
             case POWER_SHORT_PRESS:
                 // Todo: implement motor/encoder power on/off
                 INFO("POWER_SHORT_PRESS");
+                if (isOn)
+                {
+                    GPIOD->PSOR  |= 0x0004U;         // Teensy D7 - Red Power LED D2 (Off)
+                    GPIOD->PCOR  |= 0x0008U;         // Teensy D8 - Grn Power LED D3 (Must be On to enable Encoders & Motors)
+
+                    isOn = 0;
+                }
+                else
+                {
+                    GPIOD->PSOR  |= 0x0008U;         // Teensy D8 - Grn Power LED D3 (Must be On to enable Encoders & Motors)
+                    GPIOD->PCOR  |= 0x0004U;         // Teensy D7 - Red Power LED D2 (Off)
+
+                    isOn = 1;
+
+                    InitCricutBoard();
+                }
                 break;
 
             case POWER_LONG_PRESS:
