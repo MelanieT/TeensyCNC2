@@ -49,3 +49,8 @@ Temporary Items
 
 # Misc
 uncrustify.conf
+
+# Binary
+*.o
+*.elf
+*.hex
