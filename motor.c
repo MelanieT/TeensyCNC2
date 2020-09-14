@@ -220,7 +220,7 @@ void MotorDisable(void)
 
 void Motor_Init(void)
 {
-    // Initialize enocder inputs with interrupts on both edges
+    // Initialize encoder inputs with interrupts on both edges
     // PB0/PB1 = Y A/B encoder input
     PORTB->PCR[0] = (PORTB->PCR[0] & ~(PORT_PCR_ISF_MASK | PORT_PCR_MUX(0x06))) | PORT_PCR_MUX(0x01);
     PORTB->PCR[0] = (PORTB->PCR[0] & ~(PORT_PCR_IRQC(0x04))) | (PORT_PCR_ISF_MASK | PORT_PCR_IRQC(0x0B));
