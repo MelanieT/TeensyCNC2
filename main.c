@@ -20,6 +20,7 @@
 #include "motor.h"
 #include "usb_dev.h"
 #include "usb_serial.h"
+#include <stdio.h>
 
 // External system tick counter (driven by ARM systick interrupt and counts in microseconds)
 extern volatile uint32_t Tick;
@@ -217,7 +218,6 @@ void set_position(float x, float y)
 // Run the actual move, stripped bare, hopefully makes it faster
 void dda_move(float feedRate)
 {
-    feedRate *= scale_to_inches;
     // Calculate the length of the line to move and how long it will take to get there
     int32_t total  = dxSteps > dySteps ? dxSteps : dySteps;
     uint32_t delay = ((distance * 60000000.0f) / feedRate) / total;

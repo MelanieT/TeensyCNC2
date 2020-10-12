@@ -71,13 +71,13 @@ void MotorCtrlX(int32_t PWM)
 {
     if (PWM > 0)
     {
-        PWM_SetRatio(0x05, clamp((uint16_t) 65535 - abs(PWM), 0, 65535));
         PWM_SetRatio(0x06, 65535);
+        PWM_SetRatio(0x05, clamp((uint16_t) 65535 - abs(PWM), 16384, 65535));
     }
     else
     {
         PWM_SetRatio(0x05, 65535);
-        PWM_SetRatio(0x06, clamp((uint16_t) 65535 - abs(PWM), 0, 65535));
+        PWM_SetRatio(0x06, clamp((uint16_t) 65535 - abs(PWM), 16384, 65535));
     }
 }
 
@@ -86,13 +86,13 @@ void MotorCtrlY(int32_t PWM)
 {
     if (PWM > 0)
     {
-        PWM_SetRatio(0x00, clamp((uint16_t) 65535 - abs(PWM), 0, 65535));
         PWM_SetRatio(0x01, 65535);
+        PWM_SetRatio(0x00, clamp((uint16_t) 65535 - abs(PWM), 16384, 65535));
     }
     else
     {
         PWM_SetRatio(0x00, 65535);
-        PWM_SetRatio(0x01, clamp((uint16_t) 65535 - abs(PWM), 0, 65535));
+        PWM_SetRatio(0x01, clamp((uint16_t) 65535 - abs(PWM), 16384, 65535));
     }
 }
 
